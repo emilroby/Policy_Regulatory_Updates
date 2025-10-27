@@ -1,0 +1,362 @@
+import { Component, signal, OnInit, computed, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
+import { CommonModule, DatePipe } from '@angular/common'; 
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, signInWithCustomToken, Auth, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, collection, onSnapshot, Firestore, Timestamp, Unsubscribe } from 'firebase/firestore';
+
+// --- MOCK DATA FOR UI/UX REFINEMENT (Will be dynamically populated from source_type in production) ---
+const CENTRAL_GOVT_SOURCES = ['MoP', 'MNRE', 'MoF', 'CEA', 'CTUIL', 'CERC', 'Grid India'];
+const STATE_SOURCES = ['All States', 'Gujarat', 'Maharashtra', 'Karnataka', 'Tamil Nadu', 'Rajasthan', 'Uttar Pradesh'];
+const UT_SOURCES = ['All UTs', 'Delhi', 'Jammu and Kashmir', 'Puducherry'];
+
+// Define the Policy data structure based on the required output format
+interface Policy {
+  id: string;
+  title: string;
+  summary: string;
+  url: string;
+  source: string; // e.g., 'CERC', 'MoP', 'Gujarat'
+  category: string;
+  source_type: 'Central' | 'State' | 'UT'; // Used for column sorting
+  publication_date: Date;
+  dateString: string; // Formatted day and month, e.g., "08 OCT"
+}
+
+// --- MOCK DATA GENERATION ---
+function generateMockPolicies(): Policy[] {
+  const policies: Policy[] = [];
+  const now = new Date();
+  
+  const mockTitles = [
+    "New Tariff Policy for Solar Power Procurement Guidelines",
+    "Details of Transmission Access Charge Waiver on Open Access",
+    "CTUIL's Procedure for Inquiry in cases of Alleged Fraud",
+    "Additional details as per Regulation 37.10(a) Compliance",
+    "Draft Electricity (Metering) Rules, 2025 Consultation Paper",
+    "Revised PPA Model for Renewable Energy Projects in Karnataka",
+    "Maharashtra EV Policy 2024: Charging Infrastructure Subsidy",
+    "Draft Regulation on Grid Connectivity of Renewable Energy Sources (Rajasthan)"
+  ];
+  
+  const mockSources = {
+    Central: ['MoP', 'CERC', 'MNRE'],
+    State: ['Gujarat', 'Maharashtra', 'Karnataka', 'Tamil Nadu'],
+    UT: ['Delhi', 'Puducherry']
+  };
+
+  let idCounter = 1;
+  
+  for (let i = 0; i < 20; i++) {
+    const typeKey = i % 3 === 0 ? 'Central' : (i % 3 === 1 ? 'State' : 'UT');
+    const sources = mockSources[typeKey];
+    const randomSource = sources[Math.floor(Math.random() * sources.length)];
+    const date = new Date(now.getTime() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)); // Within the last 30 days
+    
+    policies.push({
+      id: `mock-${idCounter++}`,
+      title: mockTitles[idCounter % mockTitles.length],
+      summary: `Summary for policy update ${idCounter}. This regulation modifies the conditions for accessing interstate transmission systems to promote green energy uptake. Click to view the full details and source document.`,
+      url: 'https://example.com/mock-policy',
+      source: randomSource,
+      category: 'Regulations',
+      source_type: typeKey,
+      publication_date: date,
+      dateString: `${date.getDate().toString().padStart(2, '0')} ${date.toLocaleString('default', { month: 'short' }).toUpperCase()}`
+    });
+  }
+  return policies;
+}
+
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [CommonModule], 
+  template: `
+    <!-- Main Dashboard Container - White Background -->
+    <div class="min-h-screen bg-white text-[#0F4237] font-sans p-4 sm:p-8">
+      
+      <!-- Header and Title Section -->
+      <header class="mb-8">
+        <div class="flex items-center space-x-4 mb-4 justify-between">
+          <!-- Logo and Title -->
+          <div class="flex items-center space-x-3">
+            <!-- NSEFI Logo Placeholder (Corporate Green) -->
+            <div class="bg-[#165843] p-3 rounded-lg shadow-xl flex-shrink-0">
+              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <!-- Placeholder icon for NSEFI -->
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+              </svg>
+            </div>
+            <h1 class="text-xl sm:text-3xl font-extrabold text-[#0F4237] leading-tight">
+              NSEFI Policy and Regulatory Monitoring Dashboard
+            </h1>
+          </div>
+          <!-- Last Updated Status -->
+          <div class="text-xs sm:text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full shadow-md border border-gray-200 flex-shrink-0">
+            Last updated: 
+            @if (isLoaded()) {
+              <span>{{ lastUpdated() | date: 'mediumTime' }}</span>
+            } @else {
+              <span>Loading...</span>
+            }
+          </div>
+        </div>
+
+        <!-- Navigation Bar - Deep Green Accent -->
+        <nav class="bg-[#165843] rounded-xl shadow-2xl p-2 flex space-x-4 overflow-x-auto mb-6">
+          @for (link of navLinks; track link.name) {
+            <a href="#" class="px-3 py-2 text-sm font-semibold text-white hover:bg-[#0F4237] rounded-lg transition-colors duration-200 whitespace-nowrap">
+              {{ link.name }}
+            </a>
+          }
+        </nav>
+      </header>
+
+      <!-- Section Title and Search -->
+      <h2 class="text-2xl font-semibold mb-4 text-[#0F4237]">Latest updates — {{ currentMonthYear() }}</h2>
+      <div class="mb-8 p-4 bg-gray-50 rounded-xl shadow-inner border border-gray-200 relative">
+        <svg class="w-5 h-5 text-gray-500 absolute left-8 top-1/2 transform -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+        <input 
+          type="text" 
+          class="w-full bg-white border border-gray-300 text-[#0F4237] rounded-lg py-3 pl-14 pr-4 focus:outline-none focus:ring-2 focus:ring-[#165843]" 
+          placeholder="Search policies by title or source..."
+          [value]="searchQuery()"
+          (input)="updateSearch($event)"
+        >
+      </div>
+
+      <!-- Main Three-Column Data Grid -->
+      <div class="grid gap-6 lg:grid-cols-3 md:grid-cols-2 grid-cols-1">
+        
+        @for (column of columns; track column.key) {
+          <div class="flex flex-col rounded-xl shadow-lg border border-gray-200 bg-gray-50 p-4">
+            <!-- Column Header and Filter Dropdown -->
+            <div class="mb-4 pb-2 border-b border-gray-300">
+              <h3 class="text-xl font-bold text-[#0F4237]">{{ column.label }}</h3>
+            </div>
+            
+            <!-- Dynamic Filters (Matching original image design) -->
+            <div class="mb-4">
+              <select 
+                class="w-full bg-white text-[#0F4237] text-base p-2 rounded-lg border border-gray-300 shadow-sm focus:ring-1 focus:ring-[#165843]"
+                (change)="updateFilter(column.key, $event)"
+              >
+                <option value="All">All</option>
+                @for (source of getColumnFilters(column.key); track source) {
+                    <option [value]="source">{{ source }}</option>
+                }
+              </select>
+            </div>
+
+
+            <!-- Policy Cards Container -->
+            <div class="flex-grow space-y-4 policy-card-container p-1 -m-1">
+              @if (!isLoaded()) {
+                <div class="text-center text-gray-500 p-8 bg-white rounded-xl shadow-md">Loading updates...</div>
+              } @else if (filteredPolicies()[column.key].length === 0) {
+                <div class="text-center text-gray-500 p-8 bg-white rounded-xl shadow-md">No updates found for {{ column.label }}.</div>
+              } @else {
+                @for (policy of filteredPolicies()[column.key]; track policy.id) {
+                  <div 
+                    class="bg-[#F7FBF9] p-4 rounded-xl shadow-md border border-gray-200 hover:shadow-xl hover:border-[#165843] transition-all duration-300 cursor-pointer flex space-x-3"
+                    (click)="openModal(policy)"
+                  >
+                    <!-- Date Badge (Corporate Green background) -->
+                    <div class="flex-shrink-0 text-center bg-[#0F4237] text-white rounded-lg p-2 w-14 shadow-inner border border-[#165843]">
+                      <div class="text-xl font-bold leading-none">{{ policy.dateString.split(' ')[0] }}</div>
+                      <div class="text-xs uppercase leading-tight">{{ policy.dateString.split(' ')[1] }}</div>
+                    </div>
+                    <!-- Policy Title and Source -->
+                    <div>
+                      <h4 class="font-semibold text-base text-[#0F4237] mb-0.5 line-clamp-3 leading-snug">{{ policy.title }}</h4>
+                      <p class="text-xs text-gray-500 line-clamp-1">{{ policy.summary || 'Click for details...' }}</p>
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+    
+    <!-- Policy Detail Modal -->
+    @if (isModalOpen()) {
+      <div 
+        class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 transition-opacity duration-300"
+        (click)="isModalOpen.set(false)"
+      >
+        <div 
+          class="bg-white text-[#0F4237] rounded-xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-y-auto transform transition-all duration-300"
+          (click)="$event.stopPropagation()"
+        >
+          <div class="p-6 sm:p-8">
+            <div class="flex justify-between items-start mb-6 border-b border-gray-200 pb-4">
+              <h2 class="text-2xl sm:text-3xl font-bold text-[#165843] pr-4">{{ selectedPolicy()?.title }}</h2>
+              <button (click)="isModalOpen.set(false)" class="text-gray-500 hover:text-red-600 p-1 rounded-full bg-gray-100">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              </button>
+            </div>
+            
+            <div class="flex flex-wrap items-center text-sm text-gray-600 mb-6 space-x-4">
+              <span class="px-3 py-1 rounded-full text-xs font-medium text-white"
+                [class.bg-[#165843]]="selectedPolicy()?.source_type === 'Central'"
+                [class.bg-green-600]="selectedPolicy()?.source_type === 'State'"
+                [class.bg-blue-600]="selectedPolicy()?.source_type === 'UT'"
+              >{{ selectedPolicy()?.source_type }} ({{ selectedPolicy()?.source }})</span>
+              <span>Published: {{ selectedPolicy()?.publication_date | date: 'fullDate' }}</span>
+            </div>
+            
+            <p class="text-gray-700 whitespace-pre-wrap leading-relaxed mb-6">{{ selectedPolicy()?.summary || 'No detailed summary provided.' }}</p>
+            
+            <a 
+              [href]="selectedPolicy()?.url" 
+              target="_blank"
+              class="inline-flex items-center px-6 py-2 bg-[#165843] text-white font-bold rounded-lg hover:bg-[#0F4237] transition-colors duration-200 shadow-md"
+            >
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+              View Original Document
+            </a>
+          </div>
+        </div>
+      </div>
+    }
+  `,
+  styles: [`
+    /* Define the specific scrollbar style for the policy columns */
+    .policy-card-container {
+      max-height: 400px; 
+      overflow-y: auto; 
+      padding: 0 4px; 
+      margin: 0 -4px;
+      scrollbar-width: thin; 
+      scrollbar-color: #165843 #f1f1f1;
+    }
+    .policy-card-container::-webkit-scrollbar {
+      width: 8px;
+    }
+    .policy-card-container::-webkit-scrollbar-thumb {
+      background-color: #165843;
+      border-radius: 10px;
+    }
+    .policy-card-container::-webkit-scrollbar-track {
+      background: #e0e0e0;
+    }
+  `],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class App implements OnInit, OnDestroy {
+  // --- Firebase/Auth/DB properties removed for Mock Data implementation ---
+  
+  // Signals for state management
+  allPolicies = signal<Policy[]>([]);
+  searchQuery = signal<string>('');
+  currentFilters = signal<{ [key: string]: string }>({ Central: 'All', State: 'All', UT: 'All' });
+  isLoaded = signal<boolean>(false);
+  lastUpdated = signal<Date | null>(null); // Initialized on mock data load
+
+  // Modal State
+  isModalOpen = signal(false);
+  selectedPolicy = signal<Policy | null>(null);
+
+  // Constants
+  columns = [
+    { key: 'Central', label: 'Central' },
+    { key: 'State', label: 'States' },
+    { key: 'UT', label: 'UTs' }
+  ];
+  navLinks = [
+    { name: 'Home' },
+    { name: 'Representations' },
+    { name: 'Policies' },
+    { name: 'Regulations' }
+  ];
+  currentMonthYear = signal<string>(new Date().toLocaleString('default', { month: 'long', year: 'numeric' }));
+
+  constructor() {
+    // No Firebase initialization needed when using mock data
+  }
+
+  ngOnInit() {
+    this.loadMockData(); // Load data immediately on component initialization
+  }
+  
+  ngOnDestroy() {
+    // No Firebase cleanup needed when using mock data
+  }
+
+  // --- MOCK DATA LOADER ---
+  loadMockData() {
+    this.allPolicies.set(generateMockPolicies());
+    this.isLoaded.set(true);
+    this.lastUpdated.set(new Date());
+  }
+
+  // --- UI/UX Helper Functions ---
+  getColumnFilters(columnKey: 'Central' | 'State' | 'UT'): string[] {
+    if (columnKey === 'Central') return CENTRAL_GOVT_SOURCES;
+    if (columnKey === 'State') return STATE_SOURCES.filter(s => s !== 'All States');
+    if (columnKey === 'UT') return UT_SOURCES.filter(s => s !== 'All UTs');
+    return [];
+  }
+  
+  // --- Interaction Handlers ---
+  updateSearch(event: Event) {
+    const input = event.target as HTMLInputElement;
+    this.searchQuery.set(input.value);
+  }
+  
+  updateFilter(columnKey: string, event: Event) {
+    const select = event.target as HTMLSelectElement;
+    const newFilters = { ...this.currentFilters(), [columnKey]: select.value };
+    this.currentFilters.set(newFilters);
+  }
+  
+  openModal(policy: Policy) {
+    this.selectedPolicy.set(policy);
+    this.isModalOpen.set(true);
+  }
+
+  // Computed signal to filter and categorize policies based on search and type
+  filteredPolicies = computed(() => {
+    const query = this.searchQuery().toLowerCase();
+    const currentFilters = this.currentFilters();
+    const policies = this.allPolicies();
+    
+    // 1. Apply Search Filter (Title, Source, or Summary)
+    let searchFiltered = policies.filter(policy => 
+      policy.title.toLowerCase().includes(query) || 
+      policy.source.toLowerCase().includes(query) ||
+      (policy.summary || '').toLowerCase().includes(query)
+    );
+
+    // 2. Sort by Date Descending (Newest First)
+    searchFiltered.sort((a, b) => b.publication_date.getTime() - a.publication_date.getTime());
+
+    // 3. Categorize and apply secondary filter (MoP, Gujarat, etc.)
+    const categorized: { [key: string]: Policy[] } = {
+      Central: [],
+      State: [],
+      UT: []
+    };
+
+    searchFiltered.forEach(policy => {
+      const type = policy.source_type; // Central, State, or UT
+      const specificFilter = currentFilters[type]; // e.g., 'MoP' or 'All'
+      
+      if (categorized[type]) {
+        // This is a comprehensive filter check:
+        // 1. Check the primary column type (Central/State/UT)
+        // 2. Check the secondary filter (e.g., 'MoP')
+        if (policy.source_type === type) {
+            if (specificFilter === 'All' || specificFilter === 'All States' || specificFilter === 'All UTs' || policy.source === specificFilter) {
+                 categorized[type].push(policy);
+            }
+        }
+      }
+    });
+
+    return categorized;
+  });
+}
