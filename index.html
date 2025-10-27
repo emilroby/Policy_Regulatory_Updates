@@ -66,6 +66,7 @@
             opacity: 0;
             visibility: hidden;
             transition: opacity 0.3s ease, visibility 0.3s ease;
+            text-align: left; /* Ensures flyout links are left-aligned */
         }
         .group:hover .dropdown-menu {
             display: block;
@@ -91,6 +92,64 @@
         }
         /* --- END DROPDOWN STYLES --- */
 
+        /* --- NEW FLYOUT MENU STYLES (Level 3) --- */
+        .dropdown-item-group {
+            position: relative;
+        }
+        /* The Flyout Menu Container (Level 3) */
+        .dropdown-menu-flyout {
+            display: none;
+            position: absolute;
+            top: 0; 
+            left: 100%; 
+            z-index: 2000;
+            background-color: #f7f7f7; 
+            min-width: 240px; 
+            border-radius: 0.5rem;
+            box-shadow: 0 6px 20px rgba(0, 66, 66, 0.2); 
+            border-left: 3px solid #165843;
+            margin-left: -1px; /* FIX: Overlap parent slightly to ensure continuous hover */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            text-align: left; 
+            list-style: none; 
+            padding: 0; 
+        }
+        /* Show the flyout on hover of the parent item */
+        .dropdown-item-group:hover .dropdown-menu-flyout {
+            display: block;
+            opacity: 1;
+            visibility: visible;
+        }
+        /* Ensure the parent item (Central/State/UT) has a full hover background */
+        .dropdown-item-group > .dropdown-link {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-align: left; /* Overrides center alignment from .dropdown-link */
+            width: 100%; /* Ensure full width hover */
+        }
+        .dropdown-item-group .flyout-link {
+            /* Style for the links inside the flyout menu */
+            display: block;
+            padding: 0.75rem 1rem; /* Increased padding for better target */
+            color: #374151;
+            font-weight: 500;
+            transition: background-color 0.2s, color 0.2s;
+            border-bottom: 1px solid #e0e0e0; 
+            text-align: left;
+            width: 100%;
+        }
+        .dropdown-item-group .flyout-link:hover {
+            background-color: #165843; 
+            color: white;
+        }
+        .dropdown-item-group .flyout-link:last-child {
+            border-bottom: none;
+        }
+
+
         /* Enhanced card hover effect */
         .policy-card:hover {
             transform: translateY(-2px);
@@ -99,7 +158,7 @@
 
         /* --- SLATE REFACTOR STYLES --- */
         .fixed-header-nav {
-            height: 80px;
+            height: 110px; /* Increased height for two rows */
             z-index: 1000;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             /* Background set to white with slight transparency */
@@ -114,31 +173,33 @@
         }
         /* Push the main content down to account for the fixed header */
         .main-content-start {
-            padding-top: 100px; 
+            padding-top: 130px; /* Adjusted padding to clear the new 110px fixed header */
         }
         .branding-title {
-            font-size: 1.5rem; /* Matches SLATE logo size */
+            font-size: 1.8rem; /* Slightly larger for prominence */
             font-weight: 800;
             color: #165843;
-            line-height: 1;
+            line-height: 1.2;
             white-space: nowrap;
         }
         /* MODIFIED: Combined Title and Clock Layout */
         .title-clock-container {
+            /* Full width container for the left side of the fixed header */
             display: flex;
-            flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
+            align-items: center;
             height: 100%;
-            padding-right: 2rem;
+            gap: 2rem;
+            min-width: 50%;
         }
         .datetime-display {
-            /* Removed border-left and padding-left */
-            font-size: 0.9rem;
+            /* Kept simple, placed on the left of Row 2 */
+            font-size: 0.8rem; /* Slightly smaller for clock/date */
             color: #374151;
             font-weight: 500;
-            margin-top: 2px; /* Small space below the title */
             line-height: 1.1;
         }
+        
     </style>
 </head>
 <body>
@@ -148,50 +209,133 @@
             
             <!-- FIXED NAVIGATION BAR (SLATE STYLE) -->
             <nav class="fixed fixed-header-nav top-0 left-0 right-0">
-                <div class="header-content-wrapper flex items-center justify-between h-full">
+                <div class="header-content-wrapper flex flex-col h-full">
                     
-                    <!-- LEFT ZONE: Combined Title and Real-Time Clock -->
-                    <div class="title-clock-container">
-                         <!-- Title (Branding) -->
-                        <h1 class="branding-title">
+                    <!-- ROW 1 (TOP): CENTERED TITLE -->
+                    <div class="flex justify-center items-center h-1/2 pt-1">
+                         <h1 class="branding-title text-3xl">
                             NSEFI Policy and Regulatory Monitoring Dashboard
                         </h1>
-                        <!-- Real-Time Clock -->
+                    </div>
+                    
+                    <!-- ROW 2 (BOTTOM): CLOCK (LEFT) + NAVIGATION LINKS (RIGHT) -->
+                    <div class="flex items-center justify-between h-1/2 pb-1">
+                        
+                        <!-- LEFT: Real-Time Clock -->
                         <div id="real-time-clock" class="datetime-display">
                             Loading Date/Time...
                         </div>
-                    </div>
-
-                    <!-- Right Zone: Navigation Links (Buttons) -->
-                    <div class="flex items-center space-x-2">
-                        <a href="#" class="professional-nav-link">Home</a>
-                        <a href="#" class="professional-nav-link">Representations</a>
                         
-                        <!-- Policies Dropdown -->
-                        <div class="relative group">
-                            <span class="professional-nav-link cursor-pointer flex items-center">
-                                Policies 
-                                <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                            </span>
+                        <!-- RIGHT: Navigation Links (Buttons) -->
+                        <div class="flex items-center space-x-2">
+                            <a href="#" class="professional-nav-link">Home</a>
+                            <a href="#" class="professional-nav-link">Representations</a>
                             
-                            <div class="dropdown-menu absolute">
-                                <a href="#" class="dropdown-link" onclick="openFullDropdown(event, 'Central Policies', CENTRAL_GOVT_SOURCES)">Central</a>
-                                <a href="#" class="dropdown-link" onclick="openFullDropdown(event, 'State Policies', ALL_STATES)">States</a>
-                                <a href="#" class="dropdown-link" onclick="openFullDropdown(event, 'UT Policies', ALL_UTS)">UTs</a>
-                            </div>
-                        </div>
+                            <!-- Policies Dropdown (Level 1) -->
+                            <div class="relative group">
+                                <span class="professional-nav-link cursor-pointer flex items-center">
+                                    Policies 
+                                    <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </span>
+                                
+                                <!-- Dropdown Menu (Level 2: Central, State, UT) -->
+                                <div class="dropdown-menu absolute text-left">
+                                    <div class="dropdown-item-group group/flyout">
+                                        <a href="#" class="dropdown-link cursor-pointer">
+                                            Central
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                        </a>
+                                        <!-- Flyout Menu (Level 3: Specific Entities) -->
+                                        <div class="dropdown-menu-flyout absolute">
+                                            ${CENTRAL_GOVT_SOURCES.map(entity => `
+                                                <a href="?type=Policy&entity=${encodeURIComponent(entity)}" class="flyout-link">
+                                                    ${entity}
+                                                </a>
+                                            `).join('')}
+                                        </div>
+                                    </div>
 
-                        <!-- Regulations Dropdown -->
-                        <div class="relative group">
-                            <span class="professional-nav-link cursor-pointer flex items-center">
-                                Regulations 
-                                <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                            </span>
-                            
-                            <div class="dropdown-menu absolute">
-                                <a href="#" class="dropdown-link" onclick="openFullDropdown(event, 'Central Regulations', CENTRAL_GOVT_SOURCES)">Central</a>
-                                <a href="#" class="dropdown-link" onclick="openFullDropdown(event, 'State Regulations', ALL_STATES)">States</a>
-                                <a href="#" class="dropdown-link" onclick="openFullDropdown(event, 'UT Regulations', ALL_UTS)">UTs</a>
+                                    <div class="dropdown-item-group group/flyout">
+                                        <a href="#" class="dropdown-link cursor-pointer">
+                                            States
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                        </a>
+                                        <div class="dropdown-menu-flyout absolute">
+                                            ${ALL_STATES.map(entity => `
+                                                <a href="?type=Policy&entity=${encodeURIComponent(entity)}" class="flyout-link">
+                                                    ${entity}
+                                                </a>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="dropdown-item-group group/flyout">
+                                        <a href="#" class="dropdown-link cursor-pointer">
+                                            UTs
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                        </a>
+                                        <div class="dropdown-menu-flyout absolute">
+                                            ${ALL_UTS.map(entity => `
+                                                <a href="?type=Policy&entity=${encodeURIComponent(entity)}" class="flyout-link">
+                                                    ${entity}
+                                                </a>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Regulations Dropdown (Level 1) -->
+                            <div class="relative group">
+                                <span class="professional-nav-link cursor-pointer flex items-center">
+                                    Regulations 
+                                    <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </span>
+                                
+                                <!-- Dropdown Menu (Level 2: Central, State, UT) -->
+                                <div class="dropdown-menu absolute text-left">
+                                    <div class="dropdown-item-group group/flyout">
+                                        <a href="#" class="dropdown-link cursor-pointer">
+                                            Central
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                        </a>
+                                        <div class="dropdown-menu-flyout absolute">
+                                            ${CENTRAL_GOVT_SOURCES.map(entity => `
+                                                <a href="?type=Regulation&entity=${encodeURIComponent(entity)}" class="flyout-link">
+                                                    ${entity}
+                                                </a>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+
+                                    <div class="dropdown-item-group group/flyout">
+                                        <a href="#" class="dropdown-link cursor-pointer">
+                                            States
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                        </a>
+                                        <div class="dropdown-menu-flyout absolute">
+                                            ${ALL_STATES.map(entity => `
+                                                <a href="?type=Regulation&entity=${encodeURIComponent(entity)}" class="flyout-link">
+                                                    ${entity}
+                                                </a>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="dropdown-item-group group/flyout">
+                                        <a href="#" class="dropdown-link cursor-pointer">
+                                            UTs
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                        </a>
+                                        <div class="dropdown-menu-flyout absolute">
+                                            ${ALL_UTS.map(entity => `
+                                                <a href="?type=Regulation&entity=${encodeURIComponent(entity)}" class="flyout-link">
+                                                    ${entity}
+                                                </a>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -524,7 +668,7 @@
         }
 
         // --- NEW FULL DROPDOWN MODAL LOGIC (Level 3 Resolver) ---
-
+        // This is now redundant since the nested hover menu works, but we keep the close logic.
         function openFullDropdown(event, title, entityList) {
             event.preventDefault();
             const modal = document.getElementById('fullListModal');
