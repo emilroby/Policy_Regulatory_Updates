@@ -8,6 +8,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
+        /* Custom professional shadow for elements */
+        .shadow-pro {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+        }
         /* Custom scrollbar styles for the policy list containers */
         .policy-card-container {
             max-height: 400px; 
@@ -16,10 +20,74 @@
             margin: 0 -4px;
             scrollbar-width: thin; 
             scrollbar-color: #165843 #f1f1f1;
+            scroll-behavior: smooth; 
         }
         .policy-card-container::-webkit-scrollbar { width: 8px; }
         .policy-card-container::-webkit-scrollbar-thumb { background-color: #165843; border-radius: 10px; }
         .policy-card-container::-webkit-scrollbar-track { background: #e0e0e0; }
+        
+        /* New style for the real-time clock */
+        .real-time-clock {
+            font-weight: 600;
+            font-size: 0.875rem; /* text-sm */
+            color: #4b5563; /* gray-600 */
+        }
+        
+        /* New class for a cleaner, more professional navbar */
+        .professional-nav-link {
+            padding: 8px 16px;
+            text-decoration: none;
+            font-weight: 600;
+            color: #0F4237; /* Dark green text */
+            border-radius: 8px;
+            transition: all 0.2s;
+            display: block; /* Ensure full clickable area for dropdowns */
+        }
+        .professional-nav-link:hover {
+            background-color: #e6f1ec; /* Very subtle light green background */
+            color: #165843; /* Darker green on hover */
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Dropdown Styling */
+        .dropdown-content {
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0s, opacity 0.2s linear;
+            z-index: 1000;
+            min-width: 200px;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            padding: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .dropdown-link:hover {
+            background-color: #f3f4f6;
+            color: #165843;
+        }
+
+        /* Show/Hide Dropdown on Hover */
+        .group:hover > .dropdown-content,
+        .sub-group:hover > .dropdown-content {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Flyout (Sub-Dropdown) Positioning */
+        .sub-group > .dropdown-content {
+            position: absolute;
+            top: 0;
+            left: 100%;
+            margin-left: 8px; /* Spacing between menus */
+        }
+        
+        /* Enhanced card hover effect */
+        .policy-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+        }
     </style>
 </head>
 <body>
@@ -27,38 +95,128 @@
         <!-- Dashboard will be rendered here -->
         <div class="min-h-screen bg-white text-[#0F4237] font-sans p-4 sm:p-8">
             <header class="mb-8">
-                <div class="flex items-center space-x-4 mb-4 justify-between">
-                    <div class="flex items-center space-x-3">
-                        <div class="bg-[#165843] p-3 rounded-lg shadow-xl flex-shrink-0">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                            </svg>
-                        </div>
-                        <h1 class="text-xl sm:text-3xl font-extrabold text-[#0F4237] leading-tight">
-                            NSEFI Policy and Regulatory Monitoring Dashboard
-                        </h1>
+                <!-- Header: Real-Time Clock and Centered Title -->
+                <div class="relative flex flex-col md:flex-row justify-between items-center mb-4">
+                    <!-- Top Left: Real-Time Clock -->
+                    <div id="real-time-clock" class="real-time-clock order-2 md:order-1 mb-2 md:mb-0 md:flex-grow text-center md:text-left w-full md:w-auto">
+                        Loading Date/Time...
                     </div>
-                    <div id="last-updated" class="text-xs sm:text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full shadow-md border border-gray-200 flex-shrink-0">
-                        Last updated: <span>Loading...</span>
+
+                    <!-- Centered Title -->
+                    <h1 class="text-3xl sm:text-5xl font-black text-[#0F4237] leading-tight text-center order-1 md:order-2 max-w-full mx-auto md:flex-shrink">
+                        NSEFI Policy and Regulatory Monitoring Dashboard
+                    </h1>
+                    
+                    <!-- Top Right: Empty Placeholder to maintain centering -->
+                    <div class="order-3 w-full md:w-auto md:flex-grow hidden md:block">
+                        <!-- Placeholder -->
                     </div>
                 </div>
 
-                <nav class="bg-[#165843] rounded-xl shadow-2xl p-2 flex space-x-4 overflow-x-auto mb-6">
-                    <a href="#" class="px-3 py-2 text-sm font-semibold text-white hover:bg-[#0F4237] rounded-lg transition-colors duration-200 whitespace-nowrap">Home</a>
-                    <a href="#" class="px-3 py-2 text-sm font-semibold text-white hover:bg-[#0F4237] rounded-lg transition-colors duration-200 whitespace-nowrap">Representations</a>
-                    <a href="#" class="px-3 py-2 text-sm font-semibold text-white hover:bg-[#0F4237] rounded-lg transition-colors duration-200 whitespace-nowrap">Policies</a>
-                    <a href="#" class="px-3 py-2 text-sm font-semibold text-white hover:bg-[#0F4237] rounded-lg transition-colors duration-200 whitespace-nowrap">Regulations</a>
+                <!-- Navigation Bar - CLEANER LOOK with Dropdowns -->
+                <nav class="border-b border-gray-300 pb-2 mb-6 flex space-x-2 overflow-x-auto">
+                    <a href="#" class="professional-nav-link">Home</a>
+                    <a href="#" class="professional-nav-link">Representations</a>
+                    
+                    <!-- Policies Dropdown -->
+                    <div class="relative group">
+                        <span class="professional-nav-link cursor-pointer flex items-center">
+                            Policies 
+                            <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </span>
+                        
+                        <div class="dropdown-content absolute left-0 top-full mt-0 pt-2">
+                            <ul>
+                                <!-- Central Dropdown -->
+                                <li class="relative sub-group">
+                                    <a href="#" class="dropdown-link p-2 block rounded-md flex justify-between items-center">Central
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                    </a>
+                                    <div class="dropdown-content">
+                                        <ul>
+                                            ${CENTRAL_GOVT_SOURCES.map(s => `<li><a href="#" class="dropdown-link p-2 block rounded-md text-sm">${s}</a></li>`).join('')}
+                                        </ul>
+                                    </div>
+                                </li>
+                                <!-- States Dropdown -->
+                                <li class="relative sub-group">
+                                    <a href="#" class="dropdown-link p-2 block rounded-md flex justify-between items-center">States
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                    </a>
+                                    <div class="dropdown-content">
+                                        <ul>
+                                            ${ALL_STATES.map(s => `<li><a href="#" class="dropdown-link p-2 block rounded-md text-sm">${s}</a></li>`).join('')}
+                                        </ul>
+                                    </div>
+                                </li>
+                                <!-- UTs Dropdown -->
+                                <li class="relative sub-group">
+                                    <a href="#" class="dropdown-link p-2 block rounded-md flex justify-between items-center">UTs
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                    </a>
+                                    <div class="dropdown-content">
+                                        <ul>
+                                            ${ALL_UTS.map(s => `<li><a href="#" class="dropdown-link p-2 block rounded-md text-sm">${s}</a></li>`).join('')}
+                                        </ul>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Regulations Dropdown (Same Structure as Policies) -->
+                    <div class="relative group">
+                        <span class="professional-nav-link cursor-pointer flex items-center">
+                            Regulations 
+                            <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </span>
+                        
+                        <div class="dropdown-content absolute left-0 top-full mt-0 pt-2">
+                            <ul>
+                                <!-- Central Dropdown -->
+                                <li class="relative sub-group">
+                                    <a href="#" class="dropdown-link p-2 block rounded-md flex justify-between items-center">Central
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                    </a>
+                                    <div class="dropdown-content">
+                                        <ul>
+                                            ${CENTRAL_GOVT_SOURCES.map(s => `<li><a href="#" class="dropdown-link p-2 block rounded-md text-sm">${s}</a></li>`).join('')}
+                                        </ul>
+                                    </div>
+                                </li>
+                                <!-- States Dropdown -->
+                                <li class="relative sub-group">
+                                    <a href="#" class="dropdown-link p-2 block rounded-md flex justify-between items-center">States
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                    </a>
+                                    <div class="dropdown-content">
+                                        <ul>
+                                            ${ALL_STATES.map(s => `<li><a href="#" class="dropdown-link p-2 block rounded-md text-sm">${s}</a></li>`).join('')}
+                                        </ul>
+                                    </div>
+                                </li>
+                                <!-- UTs Dropdown -->
+                                <li class="relative sub-group">
+                                    <a href="#" class="dropdown-link p-2 block rounded-md flex justify-between items-center">UTs
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                    </a>
+                                    <div class="dropdown-content">
+                                        <ul>
+                                            ${ALL_UTS.map(s => `<li><a href="#" class="dropdown-link p-2 block rounded-md text-sm">${s}</a></li>`).join('')}
+                                        </ul>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
                 </nav>
             </header>
 
-            <h2 id="month-title" class="text-2xl font-semibold mb-4 text-[#0F4237]">Latest updates — Loading Month...</h2>
-            <div class="mb-8 p-4 bg-gray-50 rounded-xl shadow-inner border border-gray-200 relative">
-                <svg class="w-5 h-5 text-gray-500 absolute left-8 top-1/2 transform -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                <input type="text" id="searchInput" class="w-full bg-white border border-gray-300 text-[#0F4237] rounded-lg py-3 pl-14 pr-4 focus:outline-none focus:ring-2 focus:ring-[#165843]" placeholder="Search policies by title or source..." oninput="handleSearch(this.value)">
-            </div>
-
+            <h2 id="month-title" class="text-3xl font-bold mb-4 text-[#165843] border-l-4 border-[#165843] pl-3">Latest updates — Loading Month...</h2>
+            
             <!-- Main Three-Column Data Grid -->
-            <div id="policy-grid" class="grid gap-6 lg:grid-cols-3 md:grid-cols-2 grid-cols-1">
+            <div id="policy-grid" class="grid gap-8 lg:grid-cols-3 md:grid-cols-2 grid-cols-1">
                 <!-- Columns rendered by JavaScript -->
             </div>
         </div>
@@ -76,7 +234,7 @@
                     
                     <div id="modalMeta" class="flex flex-wrap items-center text-sm text-gray-600 mb-6 space-x-4"></div>
                     <p id="modalSummary" class="text-gray-700 whitespace-pre-wrap leading-relaxed mb-6"></p>
-                    <a id="modalLink" href="#" target="_blank" class="inline-flex items-center px-6 py-2 bg-[#165843] text-white font-bold rounded-lg hover:bg-[#0F4237] transition-colors duration-200 shadow-md">
+                    <a id="modalLink" href="#" target="_blank" class="inline-flex items-center px-6 py-2 bg-[#165843] text-white font-bold rounded-lg hover:bg-[#0F4237] transition-colors duration-200 shadow-pro">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                         View Original Document
                     </a>
@@ -87,19 +245,32 @@
 
     <script type="text/javascript">
         // --- DATA STRUCTURES & MOCK DATA ---
-        const CENTRAL_GOVT_SOURCES = ['MoP', 'MNRE', 'MoF', 'CEA', 'CTUIL', 'CERC', 'Grid India'];
-        const STATE_SOURCES = ['All States', 'Gujarat', 'Maharashtra', 'Karnataka', 'Tamil Nadu', 'Rajasthan', 'Uttar Pradesh'];
-        const UT_SOURCES = ['All UTs', 'Delhi', 'Jammu and Kashmir', 'Puducherry'];
+        // Canonical lists for dropdowns
+        const CENTRAL_GOVT_SOURCES = ['MoP', 'MNRE', 'MoF', 'CEA', 'CERC', 'CTUIL', 'Grid India'];
         
+        const ALL_STATES = [
+            "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana",
+            "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur",
+            "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
+            "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"
+        ];
+        const ALL_UTS = [
+            "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi",
+            "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
+        ];
+        
+        const STATE_SOURCES_MOCK = ['All States', 'Gujarat', 'Maharashtra', 'Karnataka', 'Tamil Nadu', 'Rajasthan', 'Uttar Pradesh'];
+        const UT_SOURCES_MOCK = ['All UTs', 'Delhi', 'Jammu and Kashmir', 'Puducherry'];
+
         const COLUMNS = [
             { key: 'Central', label: 'Central', filters: CENTRAL_GOVT_SOURCES },
-            { key: 'State', label: 'States', filters: STATE_SOURCES },
-            { key: 'UT', label: 'UTs', filters: UT_SOURCES }
+            { key: 'State', label: 'States', filters: STATE_SOURCES_MOCK }, // Using mock subset for column filter
+            { key: 'UT', label: 'UTs', filters: UT_SOURCES_MOCK } // Using mock subset for column filter
         ];
 
         let ALL_POLICIES = [];
         let CURRENT_FILTERS = { Central: 'All', State: 'All', UT: 'All' };
-        let SEARCH_QUERY = '';
+        let SEARCH_QUERY = ''; // Still required if we want to add a search bar later
 
         function generateMockPolicies() {
             const policies = [];
@@ -125,9 +296,9 @@
                 "Specific rules governing the connection of large-scale renewable projects to the regional grid."
             ];
             const mockSources = {
-                Central: ['MoP', 'CERC', 'MNRE'],
-                State: ['Gujarat', 'Maharashtra', 'Karnataka', 'Tamil Nadu'],
-                UT: ['Delhi', 'Puducherry']
+                Central: CENTRAL_GOVT_SOURCES,
+                State: ALL_STATES,
+                UT: ALL_UTS
             };
 
             let idCounter = 1;
@@ -153,23 +324,36 @@
 
         // --- CORE LOGIC ---
 
+        function updateClock() {
+            const clockEl = document.getElementById('real-time-clock');
+            if (clockEl) {
+                const now = new Date();
+                const options = { 
+                    timeZone: 'Asia/Kolkata', 
+                    day: '2-digit', month: 'short', year: 'numeric', 
+                    hour: '2-digit', minute: '2-digit', second: '2-digit', 
+                    hour12: false 
+                };
+                const formatter = new Intl.DateTimeFormat('en-GB', options);
+                clockEl.textContent = `${formatter.format(now)} IST`;
+            }
+        }
+
         function initApp() {
             ALL_POLICIES = generateMockPolicies();
             updateMonthTitle();
-            updateLastUpdated();
             renderDashboard();
+            startAutoScroll(); 
+            
+            // Start the real-time clock update
+            updateClock();
+            setInterval(updateClock, 1000); 
         }
 
         function updateMonthTitle() {
             const monthTitleEl = document.getElementById('month-title');
             const currentMonthYear = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
             monthTitleEl.textContent = `Latest updates — ${currentMonthYear}`;
-        }
-
-        function updateLastUpdated() {
-            const lastUpdatedEl = document.getElementById('last-updated');
-            const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-            lastUpdatedEl.innerHTML = `Last updated: <span>${time}</span>`;
         }
         
         function handleSearch(query) {
@@ -198,8 +382,10 @@
                 const specificFilter = CURRENT_FILTERS[type];
                 
                 if (categorized[type]) {
-                    if (specificFilter === 'All' || specificFilter === 'All States' || specificFilter === 'All UTs' || policy.source === specificFilter) {
-                        categorized[type].push(policy);
+                    if (policy.source_type === type) {
+                        if (specificFilter === 'All' || specificFilter === 'All States' || specificFilter === 'All UTs' || policy.source === specificFilter) {
+                            categorized[type].push(policy);
+                        }
                     }
                 }
             });
@@ -218,7 +404,7 @@
                 const columnPolicies = categorizedPolicies[column.key];
                 
                 const columnHtml = `
-                    <div class="flex flex-col rounded-xl shadow-lg border border-gray-200 bg-gray-50 p-4">
+                    <div class="flex flex-col rounded-xl shadow-pro border border-gray-200 bg-gray-50 p-4">
                         <div class="mb-4 pb-2 border-b border-gray-300">
                             <h3 class="text-xl font-bold text-[#0F4237]">${column.label}</h3>
                         </div>
@@ -237,13 +423,13 @@
 
                         <div class="flex-grow space-y-4 policy-card-container p-1 -m-1">
                             ${columnPolicies.length === 0 ? 
-                                `<div class="text-center text-gray-500 p-8 bg-white rounded-xl shadow-md">No updates found for ${column.label}.</div>` : 
+                                `<div class="text-center text-gray-500 p-8 bg-white rounded-xl shadow-pro">No updates found for ${column.label}.</div>` : 
                                 columnPolicies.map(policy => `
                                     <div 
-                                        class="bg-[#F7FBF9] p-4 rounded-xl shadow-md border border-gray-200 hover:shadow-xl hover:border-[#165843] transition-all duration-300 cursor-pointer flex space-x-3"
+                                        class="policy-card bg-[#F7FBF9] p-4 rounded-xl shadow-sm border border-gray-200 transition-all duration-300 cursor-pointer flex space-x-3"
                                         onclick="openModal(event, '${policy.id}')"
                                     >
-                                        <div class="flex-shrink-0 text-center bg-[#0F4237] text-white rounded-lg p-2 w-14 shadow-inner border border-[#165843]">
+                                        <div class="flex-shrink-0 text-center bg-[#0F4237] text-white rounded-lg p-2 w-14 shadow-pro border border-gray-300">
                                             <div class="text-xl font-bold leading-none">${policy.dateString.split(' ')[0]}</div>
                                             <div class="text-xs uppercase leading-tight">${policy.dateString.split(' ')[1]}</div>
                                         </div>
@@ -260,6 +446,44 @@
                 gridEl.innerHTML += columnHtml;
             });
         }
+
+        // --- AUTO-SCROLL LOGIC (Floating Updates) ---
+        function startAutoScroll() {
+            const containers = document.querySelectorAll('.policy-card-container');
+            const scrollSpeed = 0.5; // Pixels per frame
+
+            containers.forEach(container => {
+                let isPaused = false;
+
+                // Pause scrolling on user interaction
+                container.addEventListener('mouseenter', () => isPaused = true);
+                container.addEventListener('mouseleave', () => isPaused = false);
+                container.addEventListener('wheel', () => isPaused = true); 
+                container.addEventListener('touchstart', () => isPaused = true); 
+
+                function scrollTick() {
+                    if (!isPaused) {
+                        // Check if container has enough content to scroll
+                        if (container.scrollHeight > container.clientHeight) {
+                             container.scrollTop += scrollSpeed;
+                            
+                            // If reached the bottom, smoothly reset to top
+                            if (container.scrollTop + container.clientHeight >= container.scrollHeight) {
+                                // Add a short pause before snapping back, then resume scrolling
+                                isPaused = true;
+                                setTimeout(() => {
+                                    container.scrollTop = 0;
+                                    isPaused = false;
+                                }, 2000); // 2-second pause at the bottom
+                            }
+                        }
+                    }
+                    requestAnimationFrame(scrollTick);
+                }
+                requestAnimationFrame(scrollTick);
+            });
+        }
+
 
         // --- MODAL LOGIC ---
 
