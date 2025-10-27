@@ -24,7 +24,7 @@
         }
         .policy-card-container::-webkit-scrollbar { width: 8px; }
         .policy-card-container::-webkit-scrollbar-thumb { background-color: #165843; border-radius: 10px; }
-        .policy-card-container::-webkit-scrollbar-track { background: #e0e0e0; }
+        .policy-card-container::-webkit-webkit-scrollbar-track { background: #e0e0e0; }
         
         /* New style for the real-time clock */
         .real-time-clock {
@@ -49,176 +49,166 @@
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
 
-        /* Dropdown Styling */
-        .dropdown-content {
-            visibility: hidden;
-            opacity: 0;
-            transition: visibility 0s, opacity 0.2s linear;
-            z-index: 1000;
-            min-width: 200px;
-            background: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-            padding: 8px;
-            border: 1px solid #e5e7eb;
-        }
-
-        .dropdown-link:hover {
-            background-color: #f3f4f6;
-            color: #165843;
-        }
-
-        /* Show/Hide Dropdown on Hover */
-        .group:hover > .dropdown-content,
-        .sub-group:hover > .dropdown-content {
-            visibility: visible;
-            opacity: 1;
-        }
-
-        /* Flyout (Sub-Dropdown) Positioning */
-        .sub-group > .dropdown-content {
+        /* --- DROPDOWN STYLES: ADOPTED FROM SLATE FOR RELIABILITY --- */
+        .dropdown-menu {
+            display: none;
             position: absolute;
-            top: 0;
-            left: 100%;
-            margin-left: 8px; /* Spacing between menus */
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2000;
+            background-color: #f7f7f7; 
+            min-width: 220px; 
+            border-radius: 0.5rem;
+            box-shadow: 0 6px 20px rgba(0, 66, 66, 0.2); 
+            border-top: 3px solid #165843;
+            margin-top: 0.5rem;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
         }
-        
+        .group:hover .dropdown-menu {
+            display: block;
+            opacity: 1;
+            visibility: visible;
+        }
+        .dropdown-link {
+            display: block;
+            padding: 0.75rem 1.5rem;
+            color: #374151;
+            font-weight: 500;
+            text-align: center;
+            border-bottom: 1px solid #e0e0e0;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .dropdown-link:last-child {
+            border-bottom: none;
+        }
+        .dropdown-link:hover {
+            background-color: #165843; 
+            color: white; 
+            font-weight: 600;
+        }
+        /* --- END DROPDOWN STYLES --- */
+
         /* Enhanced card hover effect */
         .policy-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* --- SLATE REFACTOR STYLES --- */
+        .fixed-header-nav {
+            height: 80px;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            /* Background set to white with slight transparency */
+            background: rgba(255, 255, 255, 0.98); 
+            backdrop-filter: blur(10px);
+        }
+        .header-content-wrapper {
+            max-width: 1280px; /* equivalent to container mx-auto */
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+        /* Push the main content down to account for the fixed header */
+        .main-content-start {
+            padding-top: 100px; 
+        }
+        .branding-title {
+            font-size: 1.5rem; /* Matches SLATE logo size */
+            font-weight: 800;
+            color: #165843;
+            line-height: 1;
+            white-space: nowrap;
+        }
+        /* MODIFIED: Combined Title and Clock Layout */
+        .title-clock-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 100%;
+            padding-right: 2rem;
+        }
+        .datetime-display {
+            /* Removed border-left and padding-left */
+            font-size: 0.9rem;
+            color: #374151;
+            font-weight: 500;
+            margin-top: 2px; /* Small space below the title */
+            line-height: 1.1;
         }
     </style>
 </head>
 <body>
     <div id="app-root">
         <!-- Dashboard will be rendered here -->
-        <div class="min-h-screen bg-white text-[#0F4237] font-sans p-4 sm:p-8">
-            <header class="mb-8">
-                <!-- Header: Real-Time Clock and Centered Title -->
-                <div class="relative flex flex-col md:flex-row justify-between items-center mb-4">
-                    <!-- Top Left: Real-Time Clock -->
-                    <div id="real-time-clock" class="real-time-clock order-2 md:order-1 mb-2 md:mb-0 md:flex-grow text-center md:text-left w-full md:w-auto">
-                        Loading Date/Time...
+        <div class="min-h-screen bg-white text-[#0F4237] font-sans">
+            
+            <!-- FIXED NAVIGATION BAR (SLATE STYLE) -->
+            <nav class="fixed fixed-header-nav top-0 left-0 right-0">
+                <div class="header-content-wrapper flex items-center justify-between h-full">
+                    
+                    <!-- LEFT ZONE: Combined Title and Real-Time Clock -->
+                    <div class="title-clock-container">
+                         <!-- Title (Branding) -->
+                        <h1 class="branding-title">
+                            NSEFI Policy and Regulatory Monitoring Dashboard
+                        </h1>
+                        <!-- Real-Time Clock -->
+                        <div id="real-time-clock" class="datetime-display">
+                            Loading Date/Time...
+                        </div>
                     </div>
 
-                    <!-- Centered Title -->
-                    <h1 class="text-3xl sm:text-5xl font-black text-[#0F4237] leading-tight text-center order-1 md:order-2 max-w-full mx-auto md:flex-shrink">
-                        NSEFI Policy and Regulatory Monitoring Dashboard
-                    </h1>
-                    
-                    <!-- Top Right: Empty Placeholder to maintain centering -->
-                    <div class="order-3 w-full md:w-auto md:flex-grow hidden md:block">
-                        <!-- Placeholder -->
+                    <!-- Right Zone: Navigation Links (Buttons) -->
+                    <div class="flex items-center space-x-2">
+                        <a href="#" class="professional-nav-link">Home</a>
+                        <a href="#" class="professional-nav-link">Representations</a>
+                        
+                        <!-- Policies Dropdown -->
+                        <div class="relative group">
+                            <span class="professional-nav-link cursor-pointer flex items-center">
+                                Policies 
+                                <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </span>
+                            
+                            <div class="dropdown-menu absolute">
+                                <a href="#" class="dropdown-link" onclick="openFullDropdown(event, 'Central Policies', CENTRAL_GOVT_SOURCES)">Central</a>
+                                <a href="#" class="dropdown-link" onclick="openFullDropdown(event, 'State Policies', ALL_STATES)">States</a>
+                                <a href="#" class="dropdown-link" onclick="openFullDropdown(event, 'UT Policies', ALL_UTS)">UTs</a>
+                            </div>
+                        </div>
+
+                        <!-- Regulations Dropdown -->
+                        <div class="relative group">
+                            <span class="professional-nav-link cursor-pointer flex items-center">
+                                Regulations 
+                                <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </span>
+                            
+                            <div class="dropdown-menu absolute">
+                                <a href="#" class="dropdown-link" onclick="openFullDropdown(event, 'Central Regulations', CENTRAL_GOVT_SOURCES)">Central</a>
+                                <a href="#" class="dropdown-link" onclick="openFullDropdown(event, 'State Regulations', ALL_STATES)">States</a>
+                                <a href="#" class="dropdown-link" onclick="openFullDropdown(event, 'UT Regulations', ALL_UTS)">UTs</a>
+                            </div>
+                        </div>
                     </div>
                 </div>
+            </nav>
+            <!-- END FIXED NAVIGATION BAR -->
 
-                <!-- Navigation Bar - CLEANER LOOK with Dropdowns -->
-                <nav class="border-b border-gray-300 pb-2 mb-6 flex space-x-2 overflow-x-auto">
-                    <a href="#" class="professional-nav-link">Home</a>
-                    <a href="#" class="professional-nav-link">Representations</a>
-                    
-                    <!-- Policies Dropdown -->
-                    <div class="relative group">
-                        <span class="professional-nav-link cursor-pointer flex items-center">
-                            Policies 
-                            <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                        </span>
-                        
-                        <div class="dropdown-content absolute left-0 top-full mt-0 pt-2">
-                            <ul>
-                                <!-- Central Dropdown -->
-                                <li class="relative sub-group">
-                                    <a href="#" class="dropdown-link p-2 block rounded-md flex justify-between items-center">Central
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                                    </a>
-                                    <div class="dropdown-content">
-                                        <ul>
-                                            ${CENTRAL_GOVT_SOURCES.map(s => `<li><a href="#" class="dropdown-link p-2 block rounded-md text-sm">${s}</a></li>`).join('')}
-                                        </ul>
-                                    </div>
-                                </li>
-                                <!-- States Dropdown -->
-                                <li class="relative sub-group">
-                                    <a href="#" class="dropdown-link p-2 block rounded-md flex justify-between items-center">States
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                                    </a>
-                                    <div class="dropdown-content">
-                                        <ul>
-                                            ${ALL_STATES.map(s => `<li><a href="#" class="dropdown-link p-2 block rounded-md text-sm">${s}</a></li>`).join('')}
-                                        </ul>
-                                    </div>
-                                </li>
-                                <!-- UTs Dropdown -->
-                                <li class="relative sub-group">
-                                    <a href="#" class="dropdown-link p-2 block rounded-md flex justify-between items-center">UTs
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                                    </a>
-                                    <div class="dropdown-content">
-                                        <ul>
-                                            ${ALL_UTS.map(s => `<li><a href="#" class="dropdown-link p-2 block rounded-md text-sm">${s}</a></li>`).join('')}
-                                        </ul>
-                                    </div>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
 
-                    <!-- Regulations Dropdown (Same Structure as Policies) -->
-                    <div class="relative group">
-                        <span class="professional-nav-link cursor-pointer flex items-center">
-                            Regulations 
-                            <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                        </span>
-                        
-                        <div class="dropdown-content absolute left-0 top-full mt-0 pt-2">
-                            <ul>
-                                <!-- Central Dropdown -->
-                                <li class="relative sub-group">
-                                    <a href="#" class="dropdown-link p-2 block rounded-md flex justify-between items-center">Central
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                                    </a>
-                                    <div class="dropdown-content">
-                                        <ul>
-                                            ${CENTRAL_GOVT_SOURCES.map(s => `<li><a href="#" class="dropdown-link p-2 block rounded-md text-sm">${s}</a></li>`).join('')}
-                                        </ul>
-                                    </div>
-                                </li>
-                                <!-- States Dropdown -->
-                                <li class="relative sub-group">
-                                    <a href="#" class="dropdown-link p-2 block rounded-md flex justify-between items-center">States
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                                    </a>
-                                    <div class="dropdown-content">
-                                        <ul>
-                                            ${ALL_STATES.map(s => `<li><a href="#" class="dropdown-link p-2 block rounded-md text-sm">${s}</a></li>`).join('')}
-                                        </ul>
-                                    </div>
-                                </li>
-                                <!-- UTs Dropdown -->
-                                <li class="relative sub-group">
-                                    <a href="#" class="dropdown-link p-2 block rounded-md flex justify-between items-center">UTs
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                                    </a>
-                                    <div class="dropdown-content">
-                                        <ul>
-                                            ${ALL_UTS.map(s => `<li><a href="#" class="dropdown-link p-2 block rounded-md text-sm">${s}</a></li>`).join('')}
-                                        </ul>
-                                    </div>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-
-                </nav>
-            </header>
-
-            <h2 id="month-title" class="text-3xl font-bold mb-4 text-[#165843] border-l-4 border-[#165843] pl-3">Latest updates — Loading Month...</h2>
-            
-            <!-- Main Three-Column Data Grid -->
-            <div id="policy-grid" class="grid gap-8 lg:grid-cols-3 md:grid-cols-2 grid-cols-1">
-                <!-- Columns rendered by JavaScript -->
-            </div>
+            <!-- MAIN CONTENT AREA - Starts below the fixed header -->
+            <main class="main-content-start p-4 sm:p-8">
+                <h2 id="month-title" class="text-3xl font-bold mb-8 text-[#165843] border-l-4 border-[#165843] pl-3">Latest updates — Loading Month...</h2>
+                
+                <!-- Main Three-Column Data Grid -->
+                <div id="policy-grid" class="grid gap-8 lg:grid-cols-3 md:grid-cols-2 grid-cols-1">
+                    <!-- Columns rendered by JavaScript -->
+                </div>
+            </main>
         </div>
 
         <!-- Policy Detail Modal -->
@@ -238,6 +228,24 @@
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                         View Original Document
                     </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Full List Modal for Central/State/UT entities -->
+        <div id="fullListModal" class="fixed inset-0 bg-black bg-opacity-70 items-center justify-center p-4 z-[3000] hidden" onclick="closeFullDropdown()">
+            <div class="bg-white text-[#0F4237] rounded-xl shadow-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto transform transition-all duration-300" onclick="event.stopPropagation()">
+                <div class="p-6 sm:p-8">
+                    <div class="flex justify-between items-start mb-6 border-b border-gray-200 pb-4">
+                        <h2 id="fullListTitle" class="text-2xl sm:text-3xl font-bold text-[#165843] pr-4"></h2>
+                        <button onclick="closeFullDropdown()" class="text-gray-500 hover:text-red-600 p-1 rounded-full bg-gray-100">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    
+                    <ul id="fullListContent" class="space-y-2 max-h-96 overflow-y-auto p-2">
+                        <!-- List of entities goes here -->
+                    </ul>
                 </div>
             </div>
         </div>
@@ -511,6 +519,43 @@
 
         function closeModal() {
             const modal = document.getElementById('policyModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // --- NEW FULL DROPDOWN MODAL LOGIC (Level 3 Resolver) ---
+
+        function openFullDropdown(event, title, entityList) {
+            event.preventDefault();
+            const modal = document.getElementById('fullListModal');
+            document.getElementById('fullListTitle').textContent = title;
+            const content = document.getElementById('fullListContent');
+            content.innerHTML = '';
+            
+            // Generate list items
+            const listHtml = entityList.map(entity => {
+                // Determine the correct policy/regulation type from the title (e.g., 'Central Policies')
+                const type = title.includes('Policy') ? 'Policy' : 'Regulation'; 
+                // Create a generic link for now; in the final system, this would point to a filtered page/route.
+                const href = `?type=${type}&entity=${encodeURIComponent(entity)}`;
+                
+                return `
+                    <li>
+                        <a href="${href}" class="dropdown-link text-left hover:text-white hover:bg-[#165843] rounded-md transition-colors duration-200">
+                            ${entity}
+                        </a>
+                    </li>
+                `;
+            }).join('');
+
+            content.innerHTML = `<ul class="space-y-1">${listHtml}</ul>`;
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeFullDropdown() {
+            const modal = document.getElementById('fullListModal');
             modal.classList.add('hidden');
             modal.classList.remove('flex');
         }
