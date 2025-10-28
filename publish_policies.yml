@@ -1,0 +1,44 @@
+name: Daily Policy Publisher Job
+
+on:
+  # Schedule the job to run daily at 12:00 PM UTC
+  schedule:
+    - cron: '0 12 * * *' 
+  # Allows you to run this workflow manually from the Actions tab in GitHub
+  workflow_dispatch:
+
+jobs:
+  publish_policies:
+    # Use a fresh, standard Ubuntu environment
+    runs-on: ubuntu-latest
+    
+    # Securely map the necessary environment variable
+    env:
+      # This is the name of the secret you MUST create in GitHub Settings
+      FIREBASE_ADMIN_KEY_B64: ${{ secrets.FIREBASE_ADMIN_KEY_B64 }}
+      
+    steps:
+      - name: Checkout Repository
+        # Action to pull down your code (publish_daily_updates.py, requirements.txt, etc.)
+        uses: actions/checkout@v4
+
+      - name: Set up Python Environment
+        # Action to install Python 3.11 for the job
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        # Install all packages listed in your requirements.txt file
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+        # Note: The requirements.txt file must be in the repository root.
+
+      - name: Run Policy Scraper and Publish to Firestore
+        # This executes your main Python script.
+        # The script automatically reads the FIREBASE_ADMIN_KEY_B64 environment variable.
+        run: |
+          echo "Starting daily policy update run..."
+          python publish_daily_updates.py
+          echo "Policy update job finished."
