@@ -1,0 +1,17 @@
+FROM python:3.11-slim
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy the requirements file and install dependencies
+# This is done first to leverage Docker's build cache
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the main execution script (publish_daily_updates.py)
+# Note: The secure key is handled via the GitHub secret, not a local file copy.
+COPY publish_daily_updates.py .
+
+# Define the command that Cloud Run will execute when the job runs
+# This matches the command specified in the gcloud deployment command.
+CMD ["python", "publish_daily_updates.py"]
