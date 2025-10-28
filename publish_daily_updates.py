@@ -15,9 +15,10 @@ def initialize_firebase_securely() -> firestore.client | None:
     """Initializes Firebase Admin SDK using a base64-encoded environment secret."""
     try:
         # Get the Base64 encoded key from the environment (e.g., GitHub Secrets)
+        # This is where your GitHub Secret variable is securely injected.
         encoded_key = os.environ.get('FIREBASE_ADMIN_KEY_B64')
         if not encoded_key:
-            print("FATAL ERROR: FIREBASE_ADMIN_KEY_B64 environment variable not set.")
+            print("FATAL ERROR: FIREBASE_ADMIN_KEY_B64 environment variable not set. Aborting.")
             return None
             
         # Decode the key content (from Base64 string back to JSON bytes)
