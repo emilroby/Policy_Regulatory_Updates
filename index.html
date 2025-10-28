@@ -18,13 +18,22 @@
             overflow-y: auto; 
             padding: 0 4px; 
             margin: 0 -4px;
-            scrollbar-width: thin; 
-            scrollbar-color: #165843 #f1f1f1;
             scroll-behavior: smooth; 
+        
+            /* FIX 2: Hide Scrollbar (Firefox) */
+            scrollbar-width: none; 
         }
-        .policy-card-container::-webkit-scrollbar { width: 8px; }
-        .policy-card-container::-webkit-scrollbar-thumb { background-color: #165843; border-radius: 10px; }
-        .policy-card-container::-webkit-webkit-scrollbar-track { background: #e0e0e0; }
+        
+        /* FIX 2: Hide Scrollbar (WebKit: Chrome, Safari) */
+        .policy-card-container::-webkit-scrollbar { 
+            display: none; /* WebKit */
+            width: 0;
+            height: 0;
+        }
+
+        /* Original, now unused scrollbar styles are commented out */
+        /* .policy-card-container::-webkit-scrollbar-thumb { background-color: #165843; border-radius: 10px; }
+        .policy-card-container::-webkit-webkit-scrollbar-track { background: #e0e0e0; } */
         
         /* New style for the real-time clock */
         .real-time-clock {
@@ -115,6 +124,8 @@
             text-align: left; 
             list-style: none; 
             padding: 0; 
+            overflow-y: auto; /* Allow scrolling for long state lists */
+            max-height: 400px;
         }
         /* Show the flyout on hover of the parent item */
         .dropdown-item-group:hover .dropdown-menu-flyout {
@@ -153,7 +164,7 @@
         /* Enhanced card hover effect */
         .policy-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 15px -3pßx rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
         }
 
         /* --- SLATE REFACTOR STYLES --- */
@@ -173,7 +184,8 @@
         }
         /* Push the main content down to account for the fixed header */
         .main-content-start {
-            padding-top: 130px; /* Adjusted padding to clear the new 110px fixed header */
+            /* FIX 1: Increased padding for reliable display of title below header */
+            padding-top: 170px; /* Increased padding from 160px */
         }
         .branding-title {
             font-size: 1.8rem; /* Slightly larger for prominence */
@@ -198,6 +210,29 @@
             color: #374151;
             font-weight: 500;
             line-height: 1.1;
+        }
+        
+        /* New Hero styles */
+        .hero-section {
+            padding-top: 170px; /* Match main content start padding */
+            padding-bottom: 40px; 
+            text-align: center;
+            background-color: #f7fbf9; /* Slight off-white background for separation */
+            border-bottom: 1px solid #e0eeeb;
+        }
+
+        .hero-title {
+            font-size: 2.25rem; /* text-4xl */
+            font-weight: 800;
+            color: #0F4237;
+            margin-bottom: 0.5rem;
+        }
+
+        .hero-tagline {
+            font-size: 1.125rem; /* text-lg */
+            color: #4b5563;
+            max-width: 700px;
+            margin: 0 auto;
         }
         
     </style>
@@ -227,7 +262,7 @@
                         </div>
                         
                         <!-- RIGHT: Navigation Links (Buttons) -->
-                        <div class="flex items-center space-x-2">
+                        <div class="items-center space-x-2 hidden sm:flex">
                             <a href="#" class="professional-nav-link">Home</a>
                             <a href="#" class="professional-nav-link">Representations</a>
                             
@@ -241,45 +276,33 @@
                                 <!-- Dropdown Menu (Level 2: Central, State, UT) -->
                                 <div class="dropdown-menu absolute text-left">
                                     <div class="dropdown-item-group group/flyout">
-                                        <a href="#" class="dropdown-link cursor-pointer">
+                                        <a href="#" class="dropdown-link cursor-pointer" id="central-policies-link">
                                             Central
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                                         </a>
                                         <!-- Flyout Menu (Level 3: Specific Entities) -->
-                                        <div class="dropdown-menu-flyout absolute">
-                                            ${CENTRAL_GOVT_SOURCES.map(entity => `
-                                                <a href="?type=Policy&entity=${encodeURIComponent(entity)}" class="flyout-link">
-                                                    ${entity}
-                                                </a>
-                                            `).join('')}
+                                        <div class="dropdown-menu-flyout absolute" id="central-policies-flyout">
+                                            <!-- Content inserted by JS onload -->
                                         </div>
                                     </div>
 
                                     <div class="dropdown-item-group group/flyout">
-                                        <a href="#" class="dropdown-link cursor-pointer">
+                                        <a href="#" class="dropdown-link cursor-pointer" id="states-policies-link">
                                             States
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                                         </a>
-                                        <div class="dropdown-menu-flyout absolute">
-                                            ${ALL_STATES.map(entity => `
-                                                <a href="?type=Policy&entity=${encodeURIComponent(entity)}" class="flyout-link">
-                                                    ${entity}
-                                                </a>
-                                            `).join('')}
+                                        <div class="dropdown-menu-flyout absolute" id="states-policies-flyout">
+                                            <!-- Content inserted by JS onload -->
                                         </div>
                                     </div>
                                     
                                     <div class="dropdown-item-group group/flyout">
-                                        <a href="#" class="dropdown-link cursor-pointer">
+                                        <a href="#" class="dropdown-link cursor-pointer" id="uts-policies-link">
                                             UTs
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                                         </a>
-                                        <div class="dropdown-menu-flyout absolute">
-                                            ${ALL_UTS.map(entity => `
-                                                <a href="?type=Policy&entity=${encodeURIComponent(entity)}" class="flyout-link">
-                                                    ${entity}
-                                                </a>
-                                            `).join('')}
+                                        <div class="dropdown-menu-flyout absolute" id="uts-policies-flyout">
+                                            <!-- Content inserted by JS onload -->
                                         </div>
                                     </div>
                                 </div>
@@ -295,44 +318,32 @@
                                 <!-- Dropdown Menu (Level 2: Central, State, UT) -->
                                 <div class="dropdown-menu absolute text-left">
                                     <div class="dropdown-item-group group/flyout">
-                                        <a href="#" class="dropdown-link cursor-pointer">
+                                        <a href="#" class="dropdown-link cursor-pointer" id="central-regulations-link">
                                             Central
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                                         </a>
-                                        <div class="dropdown-menu-flyout absolute">
-                                            ${CENTRAL_GOVT_SOURCES.map(entity => `
-                                                <a href="?type=Regulation&entity=${encodeURIComponent(entity)}" class="flyout-link">
-                                                    ${entity}
-                                                </a>
-                                            `).join('')}
+                                        <div class="dropdown-menu-flyout absolute" id="central-regulations-flyout">
+                                            <!-- Content inserted by JS onload -->
                                         </div>
                                     </div>
 
                                     <div class="dropdown-item-group group/flyout">
-                                        <a href="#" class="dropdown-link cursor-pointer">
+                                        <a href="#" class="dropdown-link cursor-pointer" id="states-regulations-link">
                                             States
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                                         </a>
-                                        <div class="dropdown-menu-flyout absolute">
-                                            ${ALL_STATES.map(entity => `
-                                                <a href="?type=Regulation&entity=${encodeURIComponent(entity)}" class="flyout-link">
-                                                    ${entity}
-                                                </a>
-                                            `).join('')}
+                                        <div class="dropdown-menu-flyout absolute" id="states-regulations-flyout">
+                                            <!-- Content inserted by JS onload -->
                                         </div>
                                     </div>
                                     
                                     <div class="dropdown-item-group group/flyout">
-                                        <a href="#" class="dropdown-link cursor-pointer">
+                                        <a href="#" class="dropdown-link cursor-pointer" id="uts-regulations-link">
                                             UTs
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                                         </a>
-                                        <div class="dropdown-menu-flyout absolute">
-                                            ${ALL_UTS.map(entity => `
-                                                <a href="?type=Regulation&entity=${encodeURIComponent(entity)}" class="flyout-link">
-                                                    ${entity}
-                                                </a>
-                                            `).join('')}
+                                        <div class="dropdown-menu-flyout absolute" id="uts-regulations-flyout">
+                                            <!-- Content inserted by JS onload -->
                                         </div>
                                     </div>
                                 </div>
@@ -343,10 +354,25 @@
             </nav>
             <!-- END FIXED NAVIGATION BAR -->
 
+            <!-- NEW: HERO SECTION -->
+            <section class="hero-section">
+                <div class="max-w-4xl mx-auto px-4">
+                    <h2 class="hero-title">Real-Time Regulatory Intelligence</h2>
+                    <p class="hero-tagline">
+                        Tracking daily policy and regulatory shifts across Central, State, and UT governments
+                        to quantify risk and opportunity in the renewable energy sector.
+                    </p>
+                </div>
+            </section>
+            <!-- END HERO SECTION -->
+
 
             <!-- MAIN CONTENT AREA - Starts below the fixed header -->
-            <main class="main-content-start p-4 sm:p-8">
-                <h2 id="month-title" class="text-3xl font-bold mb-8 text-[#165843] border-l-4 border-[#165843] pl-3">Latest updates — Loading Month...</h2>
+            <main class="p-4 sm:p-8">
+                <!-- Dynamic Section Title -->
+                <h2 id="month-title" class="text-3xl font-bold text-[#165843] border-l-4 border-[#165843] pl-3 mb-8 mt-12">
+                    Latest updates — Loading Month...
+                </h2>
                 
                 <!-- Main Three-Column Data Grid -->
                 <div id="policy-grid" class="grid gap-8 lg:grid-cols-3 md:grid-cols-2 grid-cols-1">
@@ -396,8 +422,7 @@
     </div>
 
     <script type="text/javascript">
-        // --- DATA STRUCTURES & MOCK DATA ---
-        // Canonical lists for dropdowns
+        // --- DATA STRUCTURES (Consolidated Global Scope) ---
         const CENTRAL_GOVT_SOURCES = ['MoP', 'MNRE', 'MoF', 'CEA', 'CERC', 'CTUIL', 'Grid India'];
         
         const ALL_STATES = [
@@ -420,9 +445,20 @@
             { key: 'UT', label: 'UTs', filters: UT_SOURCES_MOCK } // Using mock subset for column filter
         ];
 
+        // Helper function to generate the flyout links dynamically
+        function generateFlyoutLinks(entityList, type) {
+            return entityList.map(entity => `
+                <a href="?type=${type}&entity=${encodeURIComponent(entity)}" class="flyout-link">
+                    ${entity}
+                </a>
+            `).join('');
+        }
+
+        // --- CORE APPLICATION LOGIC ---
+        
         let ALL_POLICIES = [];
         let CURRENT_FILTERS = { Central: 'All', State: 'All', UT: 'All' };
-        let SEARCH_QUERY = ''; // Still required if we want to add a search bar later
+        let SEARCH_QUERY = ''; 
 
         function generateMockPolicies() {
             const policies = [];
@@ -474,8 +510,6 @@
             return policies;
         }
 
-        // --- CORE LOGIC ---
-
         function updateClock() {
             const clockEl = document.getElementById('real-time-clock');
             if (clockEl) {
@@ -491,15 +525,33 @@
             }
         }
 
+        // --- NEW FUNCTION TO INSERT FLYOUT CONTENT AFTER LOAD ---
+        function insertDropdownContent() {
+            // Policies
+            document.getElementById('central-policies-flyout').innerHTML = generateFlyoutLinks(CENTRAL_GOVT_SOURCES, 'Policy');
+            document.getElementById('states-policies-flyout').innerHTML = generateFlyoutLinks(ALL_STATES, 'Policy');
+            document.getElementById('uts-policies-flyout').innerHTML = generateFlyoutLinks(ALL_UTS, 'Policy');
+            
+            // Regulations
+            document.getElementById('central-regulations-flyout').innerHTML = generateFlyoutLinks(CENTRAL_GOVT_SOURCES, 'Regulation');
+            document.getElementById('states-regulations-flyout').innerHTML = generateFlyoutLinks(ALL_STATES, 'Regulation');
+            document.getElementById('uts-regulations-flyout').innerHTML = generateFlyoutLinks(ALL_UTS, 'Regulation');
+        }
+
+
         function initApp() {
+            // 1. Initialize data and rendering
             ALL_POLICIES = generateMockPolicies();
             updateMonthTitle();
             renderDashboard();
-            startAutoScroll(); 
+            // startAutoScroll() is called inside renderDashboard
             
-            // Start the real-time clock update
+            // 2. Initialize real-time components
             updateClock();
             setInterval(updateClock, 1000); 
+
+            // 3. FIX: Insert dropdown content now that all functions are defined
+            insertDropdownContent();
         }
 
         function updateMonthTitle() {
@@ -573,7 +625,7 @@
                             </select>
                         </div>
 
-                        <div class="flex-grow space-y-4 policy-card-container p-1 -m-1">
+                        <div id="container-${column.key}" class="flex-grow space-y-4 policy-card-container p-1 -m-1">
                             ${columnPolicies.length === 0 ? 
                                 `<div class="text-center text-gray-500 p-8 bg-white rounded-xl shadow-pro">No updates found for ${column.label}.</div>` : 
                                 columnPolicies.map(policy => `
@@ -597,41 +649,66 @@
                 `;
                 gridEl.innerHTML += columnHtml;
             });
+            // Re-run the auto-scroll setup after the HTML is rendered
+            startAutoScroll();
         }
 
         // --- AUTO-SCROLL LOGIC (Floating Updates) ---
         function startAutoScroll() {
+            // Find all containers after the dashboard has been rendered
             const containers = document.querySelectorAll('.policy-card-container');
             const scrollSpeed = 0.5; // Pixels per frame
 
             containers.forEach(container => {
-                let isPaused = false;
+                // Check if the container already has content
+                if (!container.innerHTML.includes('policy-card')) return;
+                
+                // --- SETUP FOR CONTINUOUS SCROLL ---
+                
+                // 1. Save original content for duplication measurement
+                const originalContent = container.innerHTML;
+                
+                // 2. Measure the height of the single content block
+                // Temporarily place content in a hidden element to measure its scroll height accurately
+                const tempDiv = document.createElement('div');
+                tempDiv.style.visibility = 'hidden';
+                tempDiv.style.position = 'absolute';
+                tempDiv.innerHTML = originalContent;
+                document.body.appendChild(tempDiv);
+                
+                const singleContentHeight = tempDiv.scrollHeight;
+                document.body.removeChild(tempDiv); // Remove temporary element
 
-                // Pause scrolling on user interaction
-                container.addEventListener('mouseenter', () => isPaused = true);
-                container.addEventListener('mouseleave', () => isPaused = false);
-                container.addEventListener('wheel', () => isPaused = true); 
-                container.addEventListener('touchstart', () => isPaused = true); 
+                // Only proceed if scrolling is possible (content height > container height)
+                if (singleContentHeight <= container.clientHeight) return;
 
+                // 3. Duplicate the content inside the container
+                // We clear and reinsert to simplify the DOM and ensure only two copies exist
+                container.innerHTML = originalContent + originalContent;
+                
+                // --- ANIMATION LOOP ---
+                // FIX: Removed pause event listeners entirely to ensure continuous flow.
+                let scrollOffset = 0;
+                
+                // Set initial scroll offset to the start of the duplicated content for a clean loop initiation
+                container.scrollTop = singleContentHeight;
+                
                 function scrollTick() {
-                    if (!isPaused) {
-                        // Check if container has enough content to scroll
-                        if (container.scrollHeight > container.clientHeight) {
-                             container.scrollTop += scrollSpeed;
-                            
-                            // If reached the bottom, smoothly reset to top
-                            if (container.scrollTop + container.clientHeight >= container.scrollHeight) {
-                                // Add a short pause before snapping back, then resume scrolling
-                                isPaused = true;
-                                setTimeout(() => {
-                                    container.scrollTop = 0;
-                                    isPaused = false;
-                                }, 2000); // 2-second pause at the bottom
-                            }
-                        }
+                    // FIX: Changed to scroll downwards by subtracting from the offset
+                    scrollOffset -= scrollSpeed;
+
+                    // Check if the scroll offset exceeds the height of the original content (when scrolling down, the offset goes negative)
+                    if (scrollOffset <= -singleContentHeight) {
+                        // Snap the offset back to 0, creating the seamless loop
+                        scrollOffset = 0;
                     }
-                    requestAnimationFrame(scrollTick);
+                    
+                    // We must calculate the scroll position from the bottom for negative offsets to work visually.
+                    container.scrollTop = singleContentHeight + scrollOffset;
+                    requestAnimationFrame(scrollTick); // Recurse for continuous animation
                 }
+                
+                // Start the animation loop
                 requestAnimationFrame(scrollTick);
             });
         }
@@ -703,7 +780,6 @@
             modal.classList.add('hidden');
             modal.classList.remove('flex');
         }
-
 
         // --- INITIALIZATION ---
         window.onload = initApp;
