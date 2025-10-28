@@ -1,21 +1,22 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
-from datetime import datetime
+from datetime import datetime, timedelta
 import hashlib
 import json
 import os
 import base64
-from typing import Dict, Any, List
+import requests
+from bs4 import BeautifulSoup
+from typing import Dict, Any, List, Optional
+import re
 
 # --- 1. SECURE CREDENTIALS AND CONFIGURATION ---
-# WARNING: This script is configured to read the base64-encoded key from
-# the GitHub Secret named 'FIREBASE_ADMIN_KEY_B64' at runtime.
+# This function securely initializes Firebase using the GitHub Secret.
 
 def initialize_firebase_securely() -> firestore.client | None:
     """Initializes Firebase Admin SDK using a base64-encoded environment secret."""
     try:
-        # Get the Base64 encoded key from the environment (e.g., GitHub Secrets)
-        # This is where your GitHub Secret variable is securely injected.
+        # Get the Base64 encoded key from the environment (e.g., GitHub Actions Secret)
         encoded_key = os.environ.get('FIREBASE_ADMIN_KEY_B64')
         if not encoded_key:
             print("FATAL ERROR: FIREBASE_ADMIN_KEY_B64 environment variable not set. Aborting.")
@@ -33,7 +34,7 @@ def initialize_firebase_securely() -> firestore.client | None:
         return firestore.client()
         
     except Exception as e:
-        print(f"FATAL ERROR: Failed to initialize Firebase. Check GitHub Secret format and name. Details: {e}")
+        print(f"FATAL ERROR: Failed to initialize Firebase. Check GitHub Secret format. Details: {e}")
         return None
 
 # Initialize Firestore client globally
@@ -41,18 +42,12 @@ db = initialize_firebase_securely()
 
 # --- 2. FIRESTORE PUBLISHING LOGIC ---
 APP_ID = "nsefi-policy-tracker"
-# This is the exact collection path your live dashboard front-end is listening to.
 COLLECTION_PATH = f'artifacts/{APP_ID}/public/data/policies'
 
 def get_unique_document_id(title: str, date_str: str) -> str:
     """Creates a stable, URL-safe ID using a hash of the policy title and date."""
-    # Combine key fields
     key_string = f"{title.strip().lower()}-{date_str}"
-    
-    # Generate a hash for uniqueness and fixed length
     hash_value = hashlib.sha1(key_string.encode('utf-8')).hexdigest()
-    
-    # Use the publication date and a portion of the hash for the document ID
     return f"{date_str}-{hash_value[:10]}"
 
 def transform_and_publish_policies(policies_snapshot: Dict[str, Any]) -> int:
@@ -65,83 +60,162 @@ def transform_and_publish_policies(policies_snapshot: Dict[str, Any]) -> int:
 
     policy_list: List[Dict[str, Any]] = []
     
-    # 1. Flatten the categorized structure (central, states, uts)
+    # 1. Flatten the structure
     for source_type, sources in policies_snapshot.items():
         if source_type in ['central', 'states', 'uts']:
             for source_name, items in sources.items():
                 for item in items:
-                    # Map old structure to the new Firestore document structure
                     document = {
                         "title": item.get('title', 'Untitled Policy'),
                         "url": item.get('url', '#'),
                         "summary": item.get('summary', 'No summary available.'),
                         "source": item.get('source', source_name),
-                        "category": item.get('category', 'General'),
-                        
-                        # Set source_type for front-end categorization
+                        "category": item.get('category', 'Regulation'),
                         "source_type": source_type.capitalize().replace('s', ''), 
-                        
-                        # Use the standardized date string (YYYY-MM-DD)
                         "publication_date": item.get('date', datetime.utcnow().strftime("%Y-%m-%d")),
-                        
-                        # Add a timestamp for audit/archiving purposes
                         "published_at": datetime.utcnow().isoformat()
                     }
                     policy_list.append(document)
 
     print(f"STATUS: Publishing {len(policy_list)} policy documents to {COLLECTION_PATH}...")
 
-    # 3. Perform a Batch Write Operation (Ensures atomicity and efficiency)
+    # 2. Perform a Batch Write Operation
     batch = db.batch()
     collection_ref = db.collection(COLLECTION_PATH)
     
     for policy in policy_list:
-        # Use the unique ID generator for reliable UPSERT (Update if Exists, Insert if New)
         doc_id = get_unique_document_id(policy['title'], policy['publication_date'])
         doc_ref = collection_ref.document(doc_id)
-        
-        # We use .set() which creates the document if it doesn't exist or overwrites it if it does.
         batch.set(doc_ref, policy)
     
     batch.commit()
     return len(policy_list)
 
-# --- 3. DAILY EXECUTION FUNCTION (Integrate your Scraping Logic here) ---
+
+# --- 3. CTUIL SCRAPING LOGIC ---
+
+CTUIL_LATEST_URL = "https://ctuil.in/latestnews?p=ajax"
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    "Accept": "*/*",
+    "X-Requested-With": "XMLHttpRequest",
+    "Origin": "https://ctuil.in",
+    "Referer": "https://ctuil.in/latestnews",
+}
+
+def _clean_text(s: str) -> str:
+    """Standardizes whitespace and strips."""
+    return re.sub(r"\s+", " ", s).strip()
+
+def _parse_date_ddmmyyyy(raw: str) -> Optional[datetime]:
+    """Parses date strings like '14.10.2025'."""
+    if not raw: return None
+    raw = raw.strip().replace(".", "-").replace("/", "-")
+    try:
+        return datetime.strptime(raw, '%d-%m-%Y')
+    except ValueError:
+        return None
+
+def _fetch_html(url: str, payload: dict) -> str:
+    """Fetches HTML using a POST request."""
+    try:
+        with requests.Session() as s:
+            s.headers.update(HEADERS)
+            resp = s.post(url, data=payload, timeout=20)
+            resp.raise_for_status()
+            return resp.text
+    except requests.exceptions.RequestException as e:
+        print(f"ERROR: Failed to fetch CTUIL page. Error: {e}")
+        return ""
+
+def _harvest_ctuil_month(year: int, month: int) -> List[Dict[str, str]]:
+    """Scrapes CTUIL and filters by the requested month."""
+    payload = {
+        'sort_field': 'LatestNews.news_date',
+        'sort_type': 'DESC',
+        'page': '1',
+        'search_keyword': '',
+        'from_date': '',
+        'to_date': '',
+    }
+    
+    html = _fetch_html(CTUIL_LATEST_URL, payload)
+    if not html: return []
+
+    soup = BeautifulSoup(html, "html.parser")
+    table = soup.find("table")
+    if not table: return []
+
+    items: List[Dict[str, str]] = []
+    
+    for tr in table.find_all("tr")[1:]: # Skip header row
+        tds = tr.find_all("td")
+        if len(tds) < 3: continue
+
+        date_text = _clean_text(tds[1].text)
+        title_cell = tds[2]
+        title_text = _clean_text(title_cell.text)
+        a_tag = title_cell.find("a", href=True)
+        
+        dt = _parse_date_ddmmyyyy(date_text)
+        
+        # Filter logic: Only include items from the specified month/year
+        if dt and dt.year == year and dt.month == month and a_tag:
+            items.append({
+                "date": dt.strftime("%Y-%m-%d"),
+                "title": title_text,
+                "url": a_tag["href"], # Note: URL joining happens implicitly in the browser, leaving it as relative/full string here is fine.
+                "source": "CTUIL",
+                "category": "Update", # Default category for 'Latest News'
+                "summary": title_text, # Using title as summary for simplicity
+            })
+            
+    return items
+
+
+# --- 4. DAILY EXECUTION FUNCTION (Main Entry Point) ---
 
 def run_daily_policy_scraper():
     """
-    The main execution function that runs the scraping logic (to be integrated)
-     and pushes the result to Firestore.
+    The main execution function that integrates the scraping logic and pushes results.
     """
-    # NOTE: You will replace this mock data with the output of your actual scraping functions
-    # (e.g., calling harvest_cerc_month(), harvest_ctuil_month(), etc.).
-    mock_data_from_scrapers = {
-        "central": {
-            "CERC": [
-                {"date": "2025-10-27", "title": "New Tariff Policy for Solar Power Procurement Guidelines", "url": "https://example.com/cerc-tariff", "source": "CERC", "category": "Regulation", "summary": "Details of Transmission Access Charge Waiver on Open Access."},
-                {"date": "2025-10-26", "title": "CERC Order on Cross-Subsidy Surcharge (CSS) Calculation", "url": "https://example.com/cerc-css", "source": "CERC", "category": "Regulation", "summary": "New formula defined for calculating cross-subsidy surcharge for open access transactions."},
-            ],
-            "MNRE": [
-                 {"date": "2025-10-26", "title": "Guidelines for Green Hydrogen Mission Subsidy", "url": "https://example.com/mnre-hydrogen", "source": "MNRE", "category": "Policy", "summary": "Detailed operational guidelines for availing subsidies under the National Green Hydrogen Mission..."},
-            ]
-        },
-        "states": {
-            "Gujarat": [
-                {"date": "2025-10-25", "title": "Gujarat EV Charging Infrastructure Policy V2.0", "url": "https://example.com/gujarat-ev", "source": "Gujarat", "category": "Policy", "summary": "New rules simplify land acquisition for solar projects and provide infrastructure subsidies."},
-            ]
-        },
-        "uts": {
-            "Delhi": [
-                {"date": "2025-10-24", "title": "Delhi Energy Efficiency Building Codes Update", "url": "https://example.com/delhi-codes", "source": "Delhi", "category": "Regulation", "summary": "Mandatory updates to building codes to improve energy efficiency in large commercial complexes."},
-            ]
-        }
+    if not db:
+        print("FATAL: Skipping publishing as database connection failed.")
+        return
+
+    # --- 1. DETERMINE TARGET MONTH (October 2025 as requested for demonstration) ---
+    # NOTE: You can change this to datetime.now().year and datetime.now().month for current month
+    TARGET_YEAR = 2025 
+    TARGET_MONTH = 10 # October
+    
+    # --- 2. GATHER POLICIES FROM ALL SOURCES ---
+    
+    # Structure policies by source type as required by the front-end (Central, States, UTs)
+    all_policies_to_publish = {
+        "central": {},
+        "states": {},
+        "uts": {}
     }
     
-    total_published = transform_and_publish_policies(mock_data_from_scrapers)
+    # --- A. CTUIL Scrape (Live Data) ---
+    print(f"STATUS: Running CTUIL scrape for {TARGET_MONTH}/{TARGET_YEAR}...")
+    ctuil_policies = _harvest_ctuil_month(TARGET_YEAR, TARGET_MONTH)
+    
+    # Add results to the publishing dictionary
+    if ctuil_policies:
+        all_policies_to_publish['central']['CTUIL'] = ctuil_policies
+        print(f"SUCCESS: Found {len(ctuil_policies)} policies from CTUIL.")
+    else:
+        print("INFO: No CTUIL policies found for the target month.")
+        
+    # --- B. Other Sources (Left Empty as Requested) ---
+    # To add CERC, MNRE, Gujarat, etc., you would write functions and call them here.
+    
+    # --- 3. PUBLISH TO FIRESTORE ---
+    total_published = transform_and_publish_policies(all_policies_to_publish)
     
     print(f"\n--- DAILY PUBLISHING COMPLETE ---")
     print(f"RESULT: Successfully published/updated {total_published} documents.")
-    print("The front-end dashboard should now be live with this data.")
 
 if __name__ == "__main__":
     run_daily_policy_scraper()
