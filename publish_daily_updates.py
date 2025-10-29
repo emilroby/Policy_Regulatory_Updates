@@ -34,7 +34,7 @@ def initialize_firebase_securely() -> firestore.client | None:
         return firestore.client()
         
     except Exception as e:
-        print(f"FATAL ERROR: Failed to initialize Firebase. Check GitHub Secret format. Details: {e}")
+        print(f"FATAL ERROR: Failed to initialize Firebase. Check GitHub Secret format and name. Details: {e}")
         return None
 
 # Initialize Firestore client globally
@@ -184,7 +184,6 @@ def run_daily_policy_scraper():
         return
 
     # --- 1. DETERMINE TARGET MONTH (October 2025 as requested for demonstration) ---
-    # NOTE: You can change this to datetime.now().year and datetime.now().month for current month
     TARGET_YEAR = 2025 
     TARGET_MONTH = 10 # October
     
@@ -209,7 +208,7 @@ def run_daily_policy_scraper():
         print("INFO: No CTUIL policies found for the target month.")
         
     # --- B. Other Sources (Left Empty as Requested) ---
-    # To add CERC, MNRE, Gujarat, etc., you would write functions and call them here.
+    # The structure remains, but the lists are empty. This is the intended result.
     
     # --- 3. PUBLISH TO FIRESTORE ---
     total_published = transform_and_publish_policies(all_policies_to_publish)
