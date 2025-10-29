@@ -208,7 +208,7 @@ def run_daily_policy_scraper():
         print("INFO: No CTUIL policies found for the target month.")
         
     # --- B. Other Sources (Left Empty as Requested) ---
-    # The structure remains, but the lists are empty. This is the intended result.
+    # The empty dictionary for 'states' and 'uts' ensures those columns start blank.
     
     # --- 3. PUBLISH TO FIRESTORE ---
     total_published = transform_and_publish_policies(all_policies_to_publish)
