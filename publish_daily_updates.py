@@ -164,6 +164,9 @@ def harvest_ctuil_live(year: int, month: int) -> List[Dict[str, Any]]:
 
     items: List[Dict[str, Any]] = []
     
+    # Get current time to ensure we don't pull future-dated items
+    now = datetime.now()
+
     for tr in table.find_all("tr")[1:]: # Skip header row
         tds = tr.find_all("td")
         if len(tds) < 3: continue
@@ -175,8 +178,10 @@ def harvest_ctuil_live(year: int, month: int) -> List[Dict[str, Any]]:
         
         dt = _parse_date_ddmmyyyy(date_text)
         
+        # --- TWEAK ---
         # Filter logic: Only include items from the specified month/year
-        if dt and dt.year == year and dt.month == month and a_tag:
+        # AND ensure the date is not in the future.
+        if dt and dt.year == year and dt.month == month and dt <= now and a_tag:
             policy_id = f"ctuil-{hashlib.sha1(title_text.encode('utf-8')).hexdigest()[:6]}"
             items.append({
                 "id": policy_id,
@@ -199,15 +204,11 @@ def run_daily_policy_scraper():
     The main execution function that integrates the scraping logic and commits results.
     """
     
-    # --- 1. DETERMINE TARGET MONTH (October 2025 as requested) ---
-    # We will use the date from your screenshot for this test.
-    # For live deployment, change this to the current month/year:
-    # now = datetime.now()
-    # TARGET_YEAR = now.year
-    # TARGET_MONTH = now.month
-    
-    TARGET_YEAR = 2025 
-    TARGET_MONTH = 10 # October
+    # --- 1. DETERMINE TARGET MONTH (TWEAK: Use CURRENT month and year) ---
+    # This makes the scraper pull today's updates, not just October 2025.
+    now = datetime.now()
+    TARGET_YEAR = now.year
+    TARGET_MONTH = now.month
     
     # --- 2. GATHER POLICIES FROM ALL SOURCES ---
     all_policies = []
