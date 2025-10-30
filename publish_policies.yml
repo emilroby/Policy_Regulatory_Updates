@@ -1,7 +1,7 @@
 name: Daily Policy Data Commit
 
 on:
-  # Schedule the job to run daily at 12:00 PM UTC
+  # Schedule the job to run daily at 12:00 PM UTC (approx 5:30 PM IST)
   schedule:
     - cron: '0 12 * * *' 
   # Allows you to run this workflow manually from the Actions tab in GitHub
@@ -44,17 +44,3 @@ jobs:
           echo "Starting daily policy update run..."
           python publish_daily_updates.py
           echo "Policy update job finished."
-```
-
----
-
-## Critical Next Steps
-
-For this YAML file to work, you **must** ensure your Python script and requirements file are also updated to remove the old Firebase logic.
-
-### 1. `requirements.txt` (Must be updated)
-This file must be simplified to this:
-```
-requests
-beautifulsoup4
-
