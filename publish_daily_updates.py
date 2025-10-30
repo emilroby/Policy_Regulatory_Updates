@@ -1,95 +1,87 @@
-import firebase_admin
-from firebase_admin import credentials, firestore
+import requests
+from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 import hashlib
 import json
 import os
 import base64
-import requests
-from bs4 import BeautifulSoup
 from typing import Dict, Any, List, Optional
 import re
+import time
 
-# --- 1. SECURE CREDENTIALS AND CONFIGURATION ---
-# This function securely initializes Firebase using the GitHub Secret.
+# --- 1. CONFIGURATION AND GITHUB API SETUP ---
+# WARNING: This script MUST be run by a GitHub Action that has write permissions (REPO_ACCESS_TOKEN).
 
-def initialize_firebase_securely() -> firestore.client | None:
-    """Initializes Firebase Admin SDK using a base64-encoded environment secret."""
+# GitHub Repository Details (Pulled from GitHub Actions Environment Variables)
+# These variables are automatically provided by GitHub Actions at runtime.
+REPO_OWNER = os.environ.get('GITHUB_REPOSITORY_OWNER')
+REPO_NAME = os.environ.get('GITHUB_REPOSITORY').split('/')[-1] if os.environ.get('GITHUB_REPOSITORY') else "nsefi-policy-tracker"
+FILE_PATH = "policy_data.json"
+COMMIT_MESSAGE = "Automated policy update: Scraped CTUIL data."
+
+# SECURE TOKEN: Must be set as a GitHub Secret (REPO_ACCESS_TOKEN)
+GITHUB_TOKEN = os.environ.get('REPO_ACCESS_TOKEN')
+
+
+# --- 2. DATA PUBLISHING LOGIC (GitHub API) ---
+
+def get_current_file_sha() -> Optional[str]:
+    """Retrieves the current SHA of the file if it exists, used for update commit."""
+    if not GITHUB_TOKEN:
+        print("ERROR: GITHUB_TOKEN (REPO_ACCESS_TOKEN) is not set.")
+        return None
+        
+    api_url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
+    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+    
     try:
-        # Get the Base64 encoded key from the environment (e.g., GitHub Actions Secret)
-        encoded_key = os.environ.get('FIREBASE_ADMIN_KEY_B64')
-        if not encoded_key:
-            print("FATAL ERROR: FIREBASE_ADMIN_KEY_B64 environment variable not set. Aborting.")
+        response = requests.get(api_url, headers=headers)
+        if response.status_code == 200:
+            return response.json().get('sha')
+        elif response.status_code == 404:
+            return None # File does not exist yet (first run)
+        else:
+            print(f"ERROR: Failed to get current SHA. Status: {response.status_code}. Response: {response.text}")
             return None
-            
-        # Decode the key content (from Base64 string back to JSON bytes)
-        service_account_info = json.loads(base64.b64decode(encoded_key))
-
-        # Use credentials.Certificate to load the JSON content directly
-        cred = credentials.Certificate(service_account_info)
-        
-        if not firebase_admin._apps:
-            firebase_admin.initialize_app(cred)
-        
-        return firestore.client()
-        
-    except Exception as e:
-        print(f"FATAL ERROR: Failed to initialize Firebase. Check GitHub Secret format and name. Details: {e}")
+    except requests.RequestException as e:
+        print(f"ERROR: GitHub API Request failed during SHA check. {e}")
         return None
 
-# Initialize Firestore client globally
-db = initialize_firebase_securely()
+def publish_data_to_github(new_data: Dict[str, Any]) -> bool:
+    """Commits the new policy data to the repository as policy_data.json."""
+    if not GITHUB_TOKEN:
+        print("FATAL: GITHUB_TOKEN (REPO_ACCESS_TOKEN) is required for publishing.")
+        return False
 
-# --- 2. FIRESTORE PUBLISHING LOGIC ---
-APP_ID = "nsefi-policy-tracker"
-COLLECTION_PATH = f'artifacts/{APP_ID}/public/data/policies'
-
-def get_unique_document_id(title: str, date_str: str) -> str:
-    """Creates a stable, URL-safe ID using a hash of the policy title and date."""
-    key_string = f"{title.strip().lower()}-{date_str}"
-    hash_value = hashlib.sha1(key_string.encode('utf-8')).hexdigest()
-    return f"{date_str}-{hash_value[:10]}"
-
-def transform_and_publish_policies(policies_snapshot: Dict[str, Any]) -> int:
-    """
-    Transforms the categorized snapshot data into flat documents and pushes them to Firestore.
-    """
-    if not db:
-        print("ERROR: Firestore client is not available. Cannot publish data.")
-        return 0
-
-    policy_list: List[Dict[str, Any]] = []
+    api_url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}",
+        "Content-Type": "application/json",
+    }
     
-    # 1. Flatten the structure
-    for source_type, sources in policies_snapshot.items():
-        if source_type in ['central', 'states', 'uts']:
-            for source_name, items in sources.items():
-                for item in items:
-                    document = {
-                        "title": item.get('title', 'Untitled Policy'),
-                        "url": item.get('url', '#'),
-                        "summary": item.get('summary', 'No summary available.'),
-                        "source": item.get('source', source_name),
-                        "category": item.get('category', 'Regulation'),
-                        "source_type": source_type.capitalize().replace('s', ''), 
-                        "publication_date": item.get('date', datetime.utcnow().strftime("%Y-%m-%d")),
-                        "published_at": datetime.utcnow().isoformat()
-                    }
-                    policy_list.append(document)
-
-    print(f"STATUS: Publishing {len(policy_list)} policy documents to {COLLECTION_PATH}...")
-
-    # 2. Perform a Batch Write Operation
-    batch = db.batch()
-    collection_ref = db.collection(COLLECTION_PATH)
+    # 1. Prepare JSON content and Base64 encode it
+    json_content = json.dumps(new_data, ensure_ascii=False, indent=2)
+    content_b64 = base64.b64encode(json_content.encode('utf-8')).decode('utf-8')
     
-    for policy in policy_list:
-        doc_id = get_unique_document_id(policy['title'], policy['publication_date'])
-        doc_ref = collection_ref.document(doc_id)
-        batch.set(doc_ref, policy)
+    # 2. Get current SHA to overwrite the file (or None for first creation)
+    current_sha = get_current_file_sha()
     
-    batch.commit()
-    return len(policy_list)
+    # 3. Construct the commit body
+    commit_body = {
+        "message": COMMIT_MESSAGE,
+        "content": content_b64,
+        "sha": current_sha # Required to update existing files
+    }
+    
+    # 4. Commit the file
+    response = requests.put(api_url, headers=headers, data=json.dumps(commit_body))
+    
+    if response.status_code in (200, 201):
+        print(f"SUCCESS: Policy data committed to GitHub. Status: {response.status_code}")
+        return True
+    else:
+        print(f"FATAL ERROR: Failed to commit data. Status: {response.status_code}. Response: {response.text}")
+        return False
 
 
 # --- 3. CTUIL SCRAPING LOGIC ---
@@ -112,6 +104,7 @@ def _parse_date_ddmmyyyy(raw: str) -> Optional[datetime]:
     if not raw: return None
     raw = raw.strip().replace(".", "-").replace("/", "-")
     try:
+        # Note: The strptime format needs to be robust for the date format on the site
         return datetime.strptime(raw, '%d-%m-%Y')
     except ValueError:
         return None
@@ -124,7 +117,7 @@ def _fetch_html(url: str, payload: dict) -> str:
             resp = s.post(url, data=payload, timeout=20)
             resp.raise_for_status()
             return resp.text
-    except requests.exceptions.RequestException as e:
+    except requests.RequestException as e:
         print(f"ERROR: Failed to fetch CTUIL page. Error: {e}")
         return ""
 
@@ -164,10 +157,10 @@ def _harvest_ctuil_month(year: int, month: int) -> List[Dict[str, str]]:
             items.append({
                 "date": dt.strftime("%Y-%m-%d"),
                 "title": title_text,
-                "url": a_tag["href"], # Note: URL joining happens implicitly in the browser, leaving it as relative/full string here is fine.
+                "url": a_tag["href"],
                 "source": "CTUIL",
-                "category": "Update", # Default category for 'Latest News'
-                "summary": title_text, # Using title as summary for simplicity
+                "category": "Update",
+                "summary": title_text,
             })
             
     return items
@@ -177,44 +170,41 @@ def _harvest_ctuil_month(year: int, month: int) -> List[Dict[str, str]]:
 
 def run_daily_policy_scraper():
     """
-    The main execution function that integrates the scraping logic and pushes results.
+    The main execution function that integrates the scraping logic and commits results.
     """
-    if not db:
-        print("FATAL: Skipping publishing as database connection failed.")
-        return
-
     # --- 1. DETERMINE TARGET MONTH (October 2025 as requested for demonstration) ---
+    # NOTE: Change these if you want to scrape the current month instead of 2025/10.
     TARGET_YEAR = 2025 
-    TARGET_MONTH = 10 # October
+    TARGET_MONTH = 10 
     
     # --- 2. GATHER POLICIES FROM ALL SOURCES ---
-    
-    # Structure policies by source type as required by the front-end (Central, States, UTs)
-    all_policies_to_publish = {
-        "central": {},
-        "states": {},
-        "uts": {}
-    }
+    all_policies = []
     
     # --- A. CTUIL Scrape (Live Data) ---
     print(f"STATUS: Running CTUIL scrape for {TARGET_MONTH}/{TARGET_YEAR}...")
     ctuil_policies = _harvest_ctuil_month(TARGET_YEAR, TARGET_MONTH)
     
-    # Add results to the publishing dictionary
     if ctuil_policies:
-        all_policies_to_publish['central']['CTUIL'] = ctuil_policies
+        all_policies.extend(ctuil_policies)
         print(f"SUCCESS: Found {len(ctuil_policies)} policies from CTUIL.")
     else:
         print("INFO: No CTUIL policies found for the target month.")
         
     # --- B. Other Sources (Left Empty as Requested) ---
-    # The empty dictionary for 'states' and 'uts' ensures those columns start blank.
+    # NOTE: Add other scraping calls here (e.g., harvest_mnre(), harvest_gujarat())
     
-    # --- 3. PUBLISH TO FIRESTORE ---
-    total_published = transform_and_publish_policies(all_policies_to_publish)
+    # --- 3. FORMAT DATA FOR FRONTEND ---
+    # Policies are now a flat list, but we organize them for the JSON file structure.
+    final_data = {
+        "policies": all_policies,
+        "published_at_utc": datetime.utcnow().isoformat()
+    }
+    
+    # --- 4. PUBLISH TO GITHUB ---
+    is_success = publish_data_to_github(final_data)
     
     print(f"\n--- DAILY PUBLISHING COMPLETE ---")
-    print(f"RESULT: Successfully published/updated {total_published} documents.")
+    print(f"RESULT: {'SUCCESS' if is_success else 'FAILURE'}. Total items: {len(all_policies)}")
 
 if __name__ == "__main__":
     run_daily_policy_scraper()
