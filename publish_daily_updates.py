@@ -180,7 +180,7 @@ def harvest_ctuil_live(year: int, month: int) -> List[Dict[str, Any]]:
             policy_id = f"ctuil-{hashlib.sha1(title_text.encode('utf-8')).hexdigest()[:6]}"
             items.append({
                 "id": policy_id,
-                "date": dt.strftime("%Y-%m-%d"),
+                "publication_date": dt.strftime("%Y-%m-%d"), # Standardized date
                 "title": title_text,
                 "url": a_tag["href"],
                 "source": "CTUIL",
@@ -224,7 +224,7 @@ def run_daily_policy_scraper():
     # all_policies.extend(mnre_policies)
     
     # --- 3. FORMAT DATA FOR FRONTEND ---
-    # The frontend is designed to read a flat list of policies.
+    # The frontend is designed to read this exact structure.
     final_data = {
         "policies": all_policies,
         "published_at_utc": datetime.utcnow().isoformat()
