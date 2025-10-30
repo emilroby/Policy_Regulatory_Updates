@@ -1,33 +1,5 @@
 {
-  "policies": [
-    {
-      "id": "2025-10-27-04c35e6c71",
-      "title": "CTUIL's Procedure for Inquiry in cases of Alleged Fraud",
-      "summary": "Outlines the official process for investigating alleged fraud or transgressions in license applications.",
-      "url": "https.ctuil.in/latestnews",
-      "source": "CTUIL",
-      "source_type": "Central",
-      "publication_date": "2025-10-27",
-      "dateString": "27 OCT"
-    },
-    {
-      "id": "2025-10-26-a4b56f8c72",
-      "title": "Details of Transmission Access Charge Waiver on Open Access",
-      "summary": "Provides clarity on new charges applicable to transmission access for solar and wind projects.",
-      "url": "https.ctuil.in/latestnews",
-      "source": "CTUIL",
-      "source_type": "Central",
-      "publication_date": "2025-10-26",
-      "dateString": "26 OCT"
-    }
-  ],
-  "sources": {
-    "central": {
-      "CTUIL": true
-    },
-    "states": {},
-    "uts": {}
-  },
-  "published_at_utc": "2025-10-30T13:00:00.000Z"
+  "policies": [],
+  "published_at_utc": "2025-10-01T00:00:00.000Z"
 }
 
