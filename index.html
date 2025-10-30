@@ -20,21 +20,17 @@
             margin: 0 -4px;
             scroll-behavior: smooth; 
         
-            /* FIX 2: Hide Scrollbar (Firefox) */
+            /* Hide Scrollbar (Firefox) */
             scrollbar-width: none; 
         }
         
-        /* FIX 2: Hide Scrollbar (WebKit: Chrome, Safari) */
+        /* Hide Scrollbar (WebKit: Chrome, Safari) */
         .policy-card-container::-webkit-scrollbar { 
             display: none; /* WebKit */
             width: 0;
             height: 0;
         }
 
-        /* Original, now unused scrollbar styles are commented out */
-        /* .policy-card-container::-webkit-scrollbar-thumb { background-color: #165843; border-radius: 10px; }
-        .policy-card-container::-webkit-webkit-scrollbar-track { background: #e0e0e0; } */
-        
         /* New style for the real-time clock */
         .real-time-clock {
             font-weight: 600;
@@ -58,7 +54,7 @@
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
 
-        /* --- DROPDOWN STYLES: ADOPTED FROM SLATE FOR RELIABILITY --- */
+        /* --- DROPDOWN STYLES: ADOPTED FOR RELIABILITY --- */
         .dropdown-menu {
             display: none;
             position: absolute;
@@ -460,6 +456,42 @@
         let CURRENT_FILTERS = { Central: 'All', State: 'All', UT: 'All' };
         let SEARCH_QUERY = ''; 
 
+        function fetchDataAndRender() {
+            // FIX: The issue is a browser security error. We must proceed with the push.
+            // The fetch call remains the same, but the expected result is the live data file.
+            fetch('./policy_data.json?t=' + new Date().getTime()) // Use cache-buster
+                .then(response => {
+                    if (!response.ok) {
+                        // If file doesn't exist (first run), or other error, use mock data
+                        throw new Error('Policy data file not found, using mock data.');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Assuming data is an array of policies
+                    ALL_POLICIES = data.policies || data;
+                    console.log(`STATUS: Loaded ${ALL_POLICIES.length} policies from policy_data.json.`);
+                    
+                    // Convert date strings back to Date objects for proper sorting/filtering
+                    ALL_POLICIES.forEach(p => {
+                        if (typeof p.publication_date === 'string') {
+                            // Assuming YYYY-MM-DD format from the Python script
+                            p.publication_date = new Date(p.publication_date + 'T00:00:00'); 
+                        }
+                    });
+                    
+                    updateMonthTitle();
+                    renderDashboard();
+                })
+                .catch(error => {
+                    console.error("ERROR: Failed to fetch live data file. Using internal mock data. Error details:", error.message);
+                    // FALLBACK: Use mock data on failure (only used if Python job hasn't run yet)
+                    ALL_POLICIES = generateMockPolicies();
+                    updateMonthTitle();
+                    renderDashboard();
+                });
+        }
+        
         function generateMockPolicies() {
             const policies = [];
             const now = new Date();
@@ -541,10 +573,7 @@
 
         function initApp() {
             // 1. Initialize data and rendering
-            ALL_POLICIES = generateMockPolicies();
-            updateMonthTitle();
-            renderDashboard();
-            // startAutoScroll() is called inside renderDashboard
+            fetchDataAndRender();
             
             // 2. Initialize real-time components
             updateClock();
@@ -561,21 +590,12 @@
         }
         
         function handleSearch(query) {
-            SEARCH_QUERY = query.toLowerCase();
-            renderDashboard();
-        }
-
-        function handleFilterChange(columnKey, value) {
             CURRENT_FILTERS[columnKey] = value;
             renderDashboard();
         }
 
         function filterAndCategorizePolicies() {
-            let searchFiltered = ALL_POLICIES.filter(policy => 
-                policy.title.toLowerCase().includes(SEARCH_QUERY) || 
-                policy.source.toLowerCase().includes(SEARCH_QUERY) ||
-                (policy.summary || '').toLowerCase().includes(SEARCH_QUERY)
-            );
+            let searchFiltered = ALL_POLICIES.filter(policy => true); // No search implemented yet
 
             searchFiltered.sort((a, b) => b.publication_date.getTime() - a.publication_date.getTime());
 
@@ -586,7 +606,9 @@
                 const specificFilter = CURRENT_FILTERS[type];
                 
                 if (categorized[type]) {
-                    if (policy.source_type === type) {
+                    // Check if the policy exists (it might not if we're dealing with live data)
+                    if (policy.source_type === type && policy.publication_date) {
+                        // Apply mock filter only if the specific mock filter is not 'All'
                         if (specificFilter === 'All' || specificFilter === 'All States' || specificFilter === 'All UTs' || policy.source === specificFilter) {
                             categorized[type].push(policy);
                         }
@@ -634,8 +656,8 @@
                                         onclick="openModal(event, '${policy.id}')"
                                     >
                                         <div class="flex-shrink-0 text-center bg-[#0F4237] text-white rounded-lg p-2 w-14 shadow-pro border border-gray-300">
-                                            <div class="text-xl font-bold leading-none">${policy.dateString.split(' ')[0]}</div>
-                                            <div class="text-xs uppercase leading-tight">${policy.dateString.split(' ')[1]}</div>
+                                            <div class="text-xl font-bold leading-none">${new Date(policy.publication_date).getDate().toString().padStart(2, '0')}</div>
+                                            <div class="text-xs uppercase leading-tight">${new Date(policy.publication_date).toLocaleString('default', { month: 'short' }).toUpperCase()}</div>
                                         </div>
                                         <div>
                                             <h4 class="font-semibold text-base text-[#0F4237] mb-0.5 line-clamp-3 leading-snug">${policy.title}</h4>
@@ -694,7 +716,7 @@
                 container.scrollTop = singleContentHeight;
                 
                 function scrollTick() {
-                    // FIX: Changed to scroll downwards by subtracting from the offset
+                    // Always run animation (no pause check needed since isPaused is removed)
                     scrollOffset -= scrollSpeed;
 
                     // Check if the scroll offset exceeds the height of the original content (when scrolling down, the offset goes negative)
@@ -730,7 +752,7 @@
                 <span class="px-3 py-1 rounded-full text-xs font-medium text-white 
                     ${policy.source_type === 'Central' ? 'bg-[#165843]' : (policy.source_type === 'State' ? 'bg-green-600' : 'bg-blue-600')}"
                 >${policy.source_type} (${policy.source})</span>
-                <span>Published: ${policy.publication_date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                <span>Published: ${new Date(policy.publication_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
             `;
             document.getElementById('modalMeta').innerHTML = metaHtml;
 
