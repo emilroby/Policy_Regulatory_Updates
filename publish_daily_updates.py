@@ -113,11 +113,11 @@ def _clean_text(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 def _parse_date_ddmmyyyy(raw: str) -> Optional[datetime]:
-    """Parses date strings like '14.10.2025'."""
+    """Parses date strings like '14.10.2025' or '14.10.2025'."""
     if not raw: return None
-    raw = raw.strip().replace(".", "-").replace("/", "-")
+    raw = raw.strip().replace("/", "-")
     try:
-        # Use d.m.Y format
+        # Try d.m.Y format first
         return datetime.strptime(raw, '%d.%m.%Y')
     except ValueError:
         try:
@@ -201,6 +201,11 @@ def run_daily_policy_scraper():
     
     # --- 1. DETERMINE TARGET MONTH (October 2025 as requested) ---
     # We will use the date from your screenshot for this test.
+    # For live deployment, change this to the current month/year:
+    # now = datetime.now()
+    # TARGET_YEAR = now.year
+    # TARGET_MONTH = now.month
+    
     TARGET_YEAR = 2025 
     TARGET_MONTH = 10 # October
     
@@ -210,6 +215,7 @@ def run_daily_policy_scraper():
     # --- A. CTUIL Scrape (Live Data) ---
     print(f"STATUS: Running CTUIL scrape for {TARGET_MONTH}/{TARGET_YEAR}...")
     try:
+        # Note: This is the only scraper active.
         ctuil_policies = harvest_ctuil_live(TARGET_YEAR, TARGET_MONTH)
         if ctuil_policies:
             all_policies.extend(ctuil_policies)
@@ -242,4 +248,3 @@ if __name__ == "__main__":
         print("This script is designed to be run by a GitHub Action.")
     else:
         run_daily_policy_scraper()
-
