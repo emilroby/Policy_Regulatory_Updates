@@ -1,25 +1,32 @@
-name: Daily Policy Publisher Job
+name: Daily Policy Data Commit
 
 on:
-  # Schedule the job to run daily at 12:00 PM UTC
+  # Schedule the job to run daily at 12:00 PM UTC (You can change the time here)
   schedule:
     - cron: '0 12 * * *' 
-  # Allows you to run this workflow manually from the Actions tab in GitHub
+  # Allows manual runs from the Actions tab
   workflow_dispatch:
 
 jobs:
-  publish_policies:
-    # Use a fresh, standard Ubuntu environment
+  publish_data:
+    # Use a fresh, standard Ubuntu environment for running the Python script
     runs-on: ubuntu-latest
     
+    # Grant necessary permissions for the workflow to commit files back to the repo
+    permissions:
+      contents: write # This permission is CRITICAL for committing the JSON file
+      
     # Securely map the necessary environment variable
     env:
       # This is the name of the secret you MUST create in GitHub Settings
-      FIREBASE_ADMIN_KEY_B64: ${{ secrets.FIREBASE_ADMIN_KEY_B64 }}
-      
+      REPO_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
+      # Pass the repository details the Python script needs for API calls
+      GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+      GITHUB_REPOSITORY: ${{ github.repository }}
+
     steps:
       - name: Checkout Repository
-        # Action to pull down your code (publish_daily_updates.py, requirements.txt, etc.)
+        # Action to pull down your code (publish_daily_updates.py, requirements.txt)
         uses: actions/checkout@v4
 
       - name: Set up Python Environment
@@ -29,16 +36,15 @@ jobs:
           python-version: '3.11'
 
       - name: Install Dependencies
-        # Install all packages listed in your requirements.txt file
+        # Install only the required packages (requests, beautifulsoup4)
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
-        # Note: The requirements.txt file must be in the repository root.
 
-      - name: Run Policy Scraper and Publish to Firestore
-        # This executes your main Python script.
-        # The script automatically reads the FIREBASE_ADMIN_KEY_B64 environment variable.
+      - name: Run Policy Scraper and Commit Data
+        # This executes your main Python script, which scrapes CTUIL and uses the
+        # GITHUB_TOKEN environment variable to commit the new JSON file.
         run: |
           echo "Starting daily policy update run..."
           python publish_daily_updates.py
-          echo "Policy update job finished."
+          echo "Policy data successfully committed to repository."
