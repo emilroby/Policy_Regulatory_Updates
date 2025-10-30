@@ -1,4 +1,2 @@
-firebase-admin 
 requests 
 beautifulsoup4 
-Flask
